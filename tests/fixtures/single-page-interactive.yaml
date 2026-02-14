@@ -1,0 +1,55 @@
+# Test fixture: Landing-only with an interactive feature (calculator)
+# Tests that activate event IS required (unlike landing-only) because
+# the page has an interactive feature that delivers value.
+idea:
+  name: test-interactive
+  title: Interactive — Single Page with Calculator Feature
+  owner: tester
+  template_repo: acme/experiment-template
+
+  problem: |
+    Freelancers don't know how much to charge per hour. They guess and often undercharge.
+
+  solution: |
+    A single-page hourly rate calculator. Enter your expenses, desired salary,
+    and hours available — get your minimum hourly rate instantly.
+
+  target_user: Freelancers who are unsure what hourly rate to charge
+
+  distribution: |
+    Post in freelancer communities and share on social media.
+
+  pages:
+    - name: landing
+      purpose: Explain the tool and host the interactive rate calculator. CTA anchors to the calculator section.
+
+  features:
+    - Hourly rate calculator with expense, salary, and hours inputs
+    - Instant result display with breakdown
+    - Share result via URL with encoded parameters
+
+  primary_metric: Calculator completions
+  target_value: "100 users complete a calculation"
+  measurement_window: 1 week
+
+  stack:
+    framework: nextjs
+    analytics: posthog
+    ui: shadcn
+    hosting: vercel
+
+events:
+  standard_funnel:
+    - event: visit_landing
+      trigger: User loads the landing page
+    - event: activate
+      trigger: User completes a rate calculation
+    - event: retain_return
+      trigger: User returns after 24+ hours
+  custom_events: []
+
+assertions:
+  payment_events_required: false
+  activate_required: true
+  skippable_events: [signup_start, signup_complete]
+  min_pages: 1

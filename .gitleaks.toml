@@ -1,0 +1,15 @@
+# .gitleaks.toml — Gitleaks configuration
+#
+# Allows NEXT_PUBLIC_* placeholder values that appear in CI and .env.example.
+# These are not real secrets — they are intentional placeholders.
+
+[allowlist]
+  description = "Allow public placeholder values"
+  regexTarget = "match"
+  regexes = [
+    '''placeholder''',
+    '''placeholder-stripe''',
+    '''phc_placeholder''',
+    '''placeholder-anon-key''',
+    '''your-\w+-key''',
+  ]

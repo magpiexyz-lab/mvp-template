@@ -1,0 +1,71 @@
+# idea.yaml — Describe your MVP experiment
+#
+# Fill in every field below. Claude Code reads this file to decide what to build.
+# See idea/idea.example.yaml for a complete worked example.
+#
+# HOW TO FILL THIS IN:
+# 1. Replace every "TODO" value with your actual content
+# 2. Keep the YAML structure as-is — don't rename keys or change indentation
+# 3. When you're done, run: make bootstrap
+
+# --- Identity ---
+name: TODO                  # Lowercase slug, hyphens only (e.g., "quick-bill"). Used in analytics.
+title: TODO                 # Human-readable title (e.g., "QuickBill — Fast Invoicing for Freelancers")
+owner: TODO                 # Your name or handle (e.g., "sarah"). Used in analytics.
+# template_repo: owner/repo-name  # GitHub repo where retro feedback is filed (e.g., "myorg/experiment-template")
+
+# --- Problem & Solution ---
+problem: |
+  TODO: Describe the pain point in 1-3 sentences.
+  Who has this problem? How do they cope today?
+
+solution: |
+  TODO: Describe your proposed solution in 1-3 sentences.
+  What does the user get that they don't have today?
+
+target_user: "TODO: Be specific (e.g., freelance designers billing <5 clients/month)"
+
+distribution: |
+  TODO: How will you get this in front of target users?
+  e.g., Post in r/freelance, Indie Hackers, LinkedIn outreach
+
+# --- Pages ---
+# List every page in the app. Claude will create exactly these pages, no more.
+# "landing" is required — it's your home page.
+# The "name" becomes the URL route (e.g., name: dashboard → /dashboard, name: invoice-create → /invoice-create).
+# "landing" is special — it maps to / (the root page).
+pages:
+  - name: landing
+    purpose: "TODO: What does the landing page do? (e.g., Explain value prop, collect signups)"
+  # Add more pages below. Examples:
+  # - name: dashboard
+  #   purpose: Show main app view after login
+  # - name: settings
+  #   purpose: Account and billing settings
+
+# --- Features ---
+# List up to ~5 features. Each is a short description of one capability.
+features:
+  - TODO — First feature
+  # - Second feature
+  # - Third feature
+
+# --- Success Metric ---
+primary_metric: "TODO: What single metric determines if this experiment succeeds?"
+target_value: "TODO: What number means success? (e.g., 50 signups, 10 paid users, $500 MRR)"
+measurement_window: "TODO: How long to run? (e.g., 2 weeks, 30 days)"
+
+# --- Stack ---
+# Each value maps to a stack file at .claude/stacks/<category>/<value>.md
+# To use a different technology, change the value and ensure the stack file exists.
+# If no stack file exists, Claude will use its knowledge of that technology.
+# Defaults below work for most experiments. Only change if you have a specific reason.
+stack:
+  framework: nextjs        # Web framework — leave default
+  hosting: vercel           # Where the app is deployed — leave default
+  database: supabase        # Database and backend — leave default
+  auth: supabase            # Login/signup system — leave default
+  analytics: posthog        # Usage tracking — leave default
+  ui: shadcn                # UI component library — leave default
+  # payment: stripe         # Uncomment if your experiment involves payments
+  # testing: playwright    # Uncomment if you want E2E smoke tests

@@ -1,0 +1,52 @@
+# Test fixture: Landing-only page, no auth, no payment, no database
+# Minimal configuration — just a static marketing page with analytics.
+idea:
+  name: test-landing-only
+  title: Landing Only — Minimal Static Page
+  owner: tester
+  template_repo: acme/experiment-template
+
+  problem: |
+    Users need a simple landing page to validate demand before building a product.
+
+  solution: |
+    A single static landing page with a CTA to collect interest via email signup form (no auth).
+
+  target_user: Founders testing market demand
+
+  distribution: |
+    Share link in relevant communities and social media.
+
+  pages:
+    - name: landing
+      purpose: Explain the value prop and collect email signups via a simple form
+
+  features:
+    - Static landing page with hero section and CTA
+    - Email collection via simple form (no auth required)
+
+  primary_metric: Email signups
+  target_value: "50 email signups in 1 week"
+  measurement_window: 1 week
+
+  stack:
+    framework: nextjs
+    analytics: posthog
+    ui: shadcn
+    hosting: vercel
+
+events:
+  standard_funnel:
+    - event: visit_landing
+      trigger: User loads the landing page
+    - event: activate
+      trigger: User submits email in the interest form
+    - event: retain_return
+      trigger: User returns after 24+ hours
+  custom_events: []
+
+assertions:
+  payment_events_required: false
+  activate_required: false
+  skippable_events: [signup_start, signup_complete]
+  min_pages: 1

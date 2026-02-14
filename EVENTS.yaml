@@ -1,0 +1,115 @@
+# EVENTS.yaml — Analytics Event Dictionary
+#
+# All events are sent via the analytics library (see analytics stack file for path).
+# Every event automatically includes global_properties.
+# Event names are snake_case. Custom events should follow the pattern: <object>_<action>.
+
+global_properties:
+  project_name:
+    description: From idea.yaml `name` field. Identifies which experiment this data belongs to.
+    type: string
+    required: true
+  project_owner:
+    description: From idea.yaml `owner` field. Identifies who owns this experiment.
+    type: string
+    required: true
+
+# Standard funnel — every experiment tracks these events.
+# They map to: acquisition → activation → retention.
+# All properties marked required:true must be included in every track() call for that event.
+# Properties marked required:false are optional — include them when the data is available.
+standard_funnel:
+  - event: visit_landing
+    trigger: User loads the landing/home page
+    properties:
+      referrer:
+        type: string
+        required: false
+        description: Document referrer URL (document.referrer)
+      utm_source:
+        type: string
+        required: false
+        description: UTM source parameter from URL if present
+
+  - event: signup_start
+    trigger: User clicks "Sign up" or opens the registration form
+    properties:
+      method:
+        type: string
+        required: true
+        description: "Signup method: email, google, github"
+
+  - event: signup_complete
+    trigger: User successfully creates an account (after email verification if applicable)
+    properties:
+      method:
+        type: string
+        required: true
+        description: "Signup method: email, google, github"
+
+  - event: activate
+    trigger: User completes the core action that delivers first value (defined by idea.yaml primary_metric)
+    properties:
+      action:
+        type: string
+        required: true
+        description: What specific action the user took (e.g., "created_invoice", "sent_message")
+
+  - event: retain_return
+    trigger: User returns to the app after 24+ hours since last visit
+    # See framework stack file's retain_return section for implementation details
+    properties:
+      days_since_last:
+        type: integer
+        required: true
+        description: Days since previous visit (rounded down)
+
+# Payment funnel — only include when stack.payment is present in idea.yaml
+payment_funnel:
+  - event: pay_start
+    trigger: User clicks a payment/subscribe button and enters checkout
+    properties:
+      plan:
+        type: string
+        required: true
+        description: Plan or product name
+      amount_cents:
+        type: integer
+        required: true
+        description: Price in cents (e.g., 999 for $9.99)
+
+  - event: pay_success
+    trigger: Payment confirmed (webhook or redirect callback)
+    properties:
+      plan:
+        type: string
+        required: true
+        description: Plan or product name
+      amount_cents:
+        type: integer
+        required: true
+        description: Price in cents
+      provider:
+        type: string
+        required: true
+        description: "Payment provider: stripe, lemonsqueezy"
+
+# Custom events — add experiment-specific events below.
+# Naming convention: <object>_<action> in snake_case (e.g., invoice_created, report_exported)
+# Follow the same format as standard_funnel events.
+#
+# Example:
+#   - event: invoice_created
+#     trigger: User creates a new invoice
+#     properties:
+#       currency:
+#         type: string
+#         required: true
+#         description: Invoice currency code (e.g., USD, EUR)
+#       item_count:
+#         type: integer
+#         required: true
+#         description: Number of line items on the invoice
+
+# Start with an empty list. The /change skill will add events here.
+custom_events: []

@@ -1,0 +1,70 @@
+# idea.example.yaml — Worked example of a filled-in idea.yaml
+# Copy the structure to idea/idea.yaml and replace with your own values.
+
+# --- Identity ---
+name: quickbill
+title: QuickBill — Dead-Simple Invoicing for Freelancers
+owner: sarah
+template_repo: acme/experiment-template  # GitHub repo where retro feedback is filed
+
+# --- Problem & Solution ---
+problem: |
+  Freelancers billing fewer than 5 clients per month waste 2-3 hours on invoicing.
+  They bounce between spreadsheets, PDF generators, and manual payment follow-ups.
+  Existing tools (FreshBooks, QuickBooks) are overkill and expensive for their needs.
+
+solution: |
+  A single-page invoicing tool where freelancers create an invoice in under 60 seconds,
+  send a payment link to clients, and get notified when paid. No accounting features,
+  no complexity — just create, send, get paid.
+
+target_user: Freelance designers and developers billing 1-5 clients per month
+
+distribution: |
+  Post launch in r/freelance, r/webdev, Indie Hackers.
+  LinkedIn posts targeting freelancer communities.
+  Cold DM 50 freelancers from Dribbble/Behance.
+
+# --- Pages ---
+pages:
+  - name: landing
+    purpose: Explain value prop ("Get paid faster"), show pricing, collect signups
+  - name: signup
+    purpose: Email/password registration form
+  - name: login
+    purpose: Email/password login form
+  - name: dashboard
+    purpose: List all invoices with status (draft, sent, paid, overdue) and total revenue
+  - name: invoice-create
+    purpose: Form to create a new invoice with line items, tax, and due date
+  - name: invoice-view
+    purpose: Public shareable invoice page with pay button (client-facing, no auth required)
+  - name: settings
+    purpose: Profile, business details, Stripe connection, account settings
+
+# --- Features ---
+features:
+  - Create invoices with line items, tax, and due date
+  - Send invoice link to client via email
+  - Stripe checkout for client payments
+  - Dashboard showing invoice statuses and total revenue
+  - Email reminders for overdue invoices (7 days past due)
+
+# --- Success Metric ---
+primary_metric: Paid invoices
+target_value: "10 freelancers send at least 1 paid invoice"
+measurement_window: 2 weeks
+
+# --- Stack ---
+# Each value maps to a stack file at .claude/stacks/<category>/<value>.md
+# To use a different technology, change the value and ensure the stack file exists.
+# If no stack file exists, Claude will use its knowledge of that technology.
+stack:
+  framework: nextjs
+  hosting: vercel
+  database: supabase
+  auth: supabase
+  analytics: posthog
+  ui: shadcn
+  payment: stripe
+  # testing: playwright  # Uncomment for E2E smoke tests

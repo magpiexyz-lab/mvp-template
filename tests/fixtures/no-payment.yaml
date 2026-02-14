@@ -1,0 +1,69 @@
+# Test fixture: Auth + database but no payment stack
+# Tests that payment_funnel events are absent when stack.payment is missing.
+idea:
+  name: test-no-payment
+  title: NoPayment — Auth App Without Payment
+  owner: tester
+  template_repo: acme/experiment-template
+
+  problem: |
+    Teams need a simple shared notes tool but existing options are too complex.
+
+  solution: |
+    A minimal collaborative notes app where teams create, edit, and share notes.
+    Free to use — no payment required.
+
+  target_user: Small teams of 2-5 people who need shared notes
+
+  distribution: |
+    Post in ProductHunt and relevant Slack communities.
+
+  pages:
+    - name: landing
+      purpose: Explain the value prop and link to signup
+    - name: signup
+      purpose: Email/password registration form
+    - name: login
+      purpose: Email/password login form
+    - name: dashboard
+      purpose: List all notes with search and create button
+    - name: note-edit
+      purpose: Editor for creating and editing a note
+
+  features:
+    - Create and edit markdown notes
+    - Share notes with team members via link
+    - Dashboard with search and filter
+    - Real-time collaborative editing
+
+  primary_metric: Active notes
+  target_value: "5 teams create at least 3 notes each"
+  measurement_window: 2 weeks
+
+  stack:
+    framework: nextjs
+    hosting: vercel
+    database: supabase
+    auth: supabase
+    analytics: posthog
+    ui: shadcn
+
+events:
+  standard_funnel:
+    - event: visit_landing
+      trigger: User loads the landing page
+    - event: signup_start
+      trigger: User opens the registration form
+    - event: signup_complete
+      trigger: User successfully creates an account
+    - event: activate
+      trigger: User creates their first note
+    - event: retain_return
+      trigger: User returns after 24+ hours
+  custom_events: []
+
+assertions:
+  payment_events_required: false
+  activate_required: true
+  skippable_events: []
+  min_pages: 5
