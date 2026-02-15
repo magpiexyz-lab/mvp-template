@@ -1,6 +1,6 @@
 # Experiment Template
 
-![CI](https://github.com/magpiexyz/mvp-template/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/magpiexyz-lab/mvp-template/actions/workflows/ci.yml/badge.svg)
 
 A template repository for running parallel MVP experiments. Fill in your idea, run a command, get a deployable app.
 
