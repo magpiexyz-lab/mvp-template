@@ -4,13 +4,19 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help validate bootstrap change iterate retro test-e2e dev test deploy clean clean-all
+.PHONY: help validate test-e2e dev test deploy clean clean-all
 
 help: ## Show this help message
 	@echo "Usage: make <command>"
 	@echo ""
 	@echo "Commands:"
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
+	@echo ""
+	@echo "AI skills (run in Claude Code):"
+	@echo "  /bootstrap       Scaffold the full MVP from idea.yaml"
+	@echo "  /change ...      Make a change (e.g., /change fix the signup button)"
+	@echo "  /iterate         Review metrics and get recommendations"
+	@echo "  /retro           Run a retrospective and file feedback"
 
 validate: ## Check idea.yaml for valid YAML, TODOs, name format, and landing page
 	@echo "Validating idea/idea.yaml..."
@@ -67,16 +73,21 @@ validate: ## Check idea.yaml for valid YAML, TODOs, name format, and landing pag
 	if missing: \
 	    print('Error: these required fields are missing or empty: ' + ', '.join(missing)); \
 	    sys.exit(1); \
+	if not data.get('template_repo'): \
+	    print('  Warning: template_repo not set. /retro will ask where to file the retrospective.'); \
 	"
-	@python3 -c "\
-	import yaml, os; \
+	@STACK_WARN=0; \
+	python3 -c "\
+	import yaml, os, sys; \
 	data = yaml.safe_load(open('idea/idea.yaml')); \
 	stack = data.get('stack', {}); \
 	warnings = [f'stack.{k}: {v} — no file at .claude/stacks/{k}/{v}.md' for k, v in stack.items() if not os.path.isfile(f'.claude/stacks/{k}/{v}.md')]; \
 	[print(f'  Warning: {w}') for w in warnings]; \
 	print('  Claude will use general knowledge for these. To fix: create the stack file or change the value.') if warnings else None; \
-	"
-	@if [ -f EVENTS.yaml ]; then \
+	sys.exit(2) if warnings else sys.exit(0); \
+	" || STACK_WARN=$$?; \
+	if [ "$$STACK_WARN" -ne 0 ] && [ "$$STACK_WARN" -ne 2 ]; then exit 1; fi; \
+	if [ -f EVENTS.yaml ]; then \
 		python3 -c "\
 		import yaml, sys; \
 		data = yaml.safe_load(open('EVENTS.yaml')); \
@@ -96,36 +107,31 @@ validate: ## Check idea.yaml for valid YAML, TODOs, name format, and landing pag
 		    sys.exit(1); \
 		" || exit 1; \
 		echo "EVENTS.yaml looks good — valid structure."; \
+	else \
+		echo "Warning: EVENTS.yaml not found — /bootstrap will fail. Ensure EVENTS.yaml exists in the repo root."; \
+	fi; \
+	python3 scripts/validate-semantics.py || exit 1; \
+	if [ "$$STACK_WARN" -eq 2 ]; then \
+		echo "Validation passed with warnings — review above."; \
+	else \
+		echo "Validation passed — idea.yaml and EVENTS.yaml look good."; \
+	fi; \
+	if [ -f package.json ]; then \
+		echo "Note: project is already bootstrapped. Open Claude Code and run /change to make changes."; \
 	fi
-	@python3 scripts/validate-semantics.py
-	@echo "Validation passed — idea.yaml and EVENTS.yaml look good."
-	@if [ -f package.json ]; then \
-		echo "Note: project is already bootstrapped. Use make change DESC=\"...\" to make changes."; \
-	fi
 
-bootstrap: ## Scaffold the full MVP from idea.yaml
-	./scripts/run-skill.sh bootstrap feat
-
-change: ## Make a change (usage: make change DESC="fix the signup button")
-ifndef DESC
-	$(error DESC is required. Usage: make change DESC="fix the signup button")
-endif
-	./scripts/run-skill.sh change change "$(DESC)"
-
-iterate: ## Review metrics and get recommendations for next steps
-	./scripts/run-skill.sh iterate chore
-
-retro: ## Run a retrospective and file feedback as GitHub issue
-	./scripts/run-skill.sh retro chore
-
-test-e2e: ## Run Playwright E2E tests (requires SUPABASE_SERVICE_ROLE_KEY in .env.local)
+test-e2e: ## Run Playwright E2E tests
 	@if [ -f playwright.config.ts ]; then \
 		npx playwright test; \
 	else \
-		echo "No playwright.config.ts found — run 'make change DESC=\"add E2E smoke tests\"' first"; \
+		echo "No playwright.config.ts found — open Claude Code and run '/change add E2E smoke tests' first"; \
 	fi
 
 dev: ## Start the local development server
+	@if [ ! -f package.json ]; then \
+		echo "Error: No package.json found. Run /bootstrap first."; \
+		exit 1; \
+	fi
 	npm run dev
 
 test: ## Run tests (skips if no test script)
@@ -137,18 +143,31 @@ test: ## Run tests (skips if no test script)
 
 # Default: Vercel. Update this target if you change stack.hosting.
 deploy: ## Deploy to Vercel (first run will prompt to link project)
+	@if [ ! -f package.json ]; then \
+		echo "Error: No package.json found. Run /bootstrap first."; \
+		exit 1; \
+	fi
+	@if [ -f idea/idea.yaml ]; then \
+		HOSTING=$$(python3 -c "import yaml; d=yaml.safe_load(open('idea/idea.yaml')); print(d.get('stack',{}).get('hosting',''))" 2>/dev/null); \
+		if [ -n "$$HOSTING" ] && [ "$$HOSTING" != "vercel" ]; then \
+			echo "Warning: stack.hosting is '$$HOSTING', but this Makefile only has a Vercel deploy command."; \
+			echo "To deploy: replace 'npx vercel deploy --prod' on the last line of the deploy target with your hosting provider's CLI command (e.g., 'npx netlify deploy --prod', 'fly deploy')."; \
+			echo "Or deploy directly from your terminal — this Makefile target is optional."; \
+			exit 1; \
+		fi; \
+	fi
 	@echo "Deploying to Vercel..."
 	npx vercel deploy --prod
 
 # Default: Next.js + shadcn artifacts. Update if you change stack.framework or stack.ui.
 clean: ## Remove generated files (lets you re-run bootstrap)
 	rm -rf node_modules .next out                          # framework/nextjs
-	rm -f .nvmrc package.json package-lock.json tsconfig.json next.config.ts next-env.d.ts postcss.config.mjs  # framework/nextjs
-	rm -f components.json tailwind.config.ts .eslintrc.json eslint.config.mjs  # ui/shadcn
+	rm -f .nvmrc package.json package-lock.json tsconfig.json next.config.ts next-env.d.ts  # framework/nextjs
+	rm -f components.json tailwind.config.ts .eslintrc.json eslint.config.mjs postcss.config.mjs  # ui/shadcn
 	rm -rf src                                             # all generated app code
 	rm -f .env.example                                     # all stacks
 	rm -rf e2e playwright.config.ts test-results playwright-report blob-report  # testing/playwright
-	@echo "Cleaned. You can now run 'make bootstrap' again."
+	@echo "Cleaned. You can now open Claude Code and run /bootstrap again."
 	@echo "Note: idea/idea.yaml, EVENTS.yaml, and supabase/ were NOT removed. Use 'make clean-all' for a full reset."
 
 clean-all: ## Remove everything including migrations (full reset)
@@ -156,4 +175,4 @@ clean-all: ## Remove everything including migrations (full reset)
 	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || { echo "Cancelled."; exit 1; }
 	$(MAKE) clean
 	rm -rf supabase
-	@echo "Full reset complete. You can now run 'make bootstrap' again."
+	@echo "Full reset complete. You can now open Claude Code and run /bootstrap again."

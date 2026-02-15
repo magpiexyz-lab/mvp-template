@@ -22,7 +22,7 @@ Rules are in priority order. When two rules conflict, the lower-numbered rule wi
 ## Rule 2: Analytics Mandatory
 - Every page and user action must fire events defined in `EVENTS.yaml` — that file is the **canonical** list of all events; always read it for the full specification
 - Use the analytics library for all tracking calls — never call the analytics provider directly. See your analytics stack file (`.claude/stacks/analytics/<value>.md`) for the file path, exports, and import conventions.
-- Use typed event wrappers (see analytics stack file) for standard and payment funnel events — this provides compile-time validation. For custom events, use the generic `track()` function.
+- Use typed event wrappers (see analytics stack file) for standard and payment funnel events — this provides compile-time validation. For custom events, use the generic `track()` function. For server-side events (webhooks, API routes), use `trackServerEvent()` from the server analytics library with the event name as a string — typed wrappers are client-side only.
 - The analytics library auto-attaches global properties defined in EVENTS.yaml `global_properties` to every event — these distinguish experiments in the shared analytics project.
 - Wire each `standard_funnel` event from EVENTS.yaml to its corresponding page. If no page provides a natural trigger for an event (e.g., no signup page), omit that event.
 - `payment_funnel` events from EVENTS.yaml are required only when `stack.payment` is present in idea.yaml.
@@ -39,7 +39,7 @@ Rules are in priority order. When two rules conflict, the lower-numbered rule wi
 
 ## Rule 4: Keep It Minimal
 - Prefer well-known libraries over custom code
-- No tests except for auth and payment flows and E2E smoke tests (`make change DESC="add E2E smoke tests"`). Exception: if a feature contains non-trivial business logic (calculations, state machines, multi-step workflows), add unit tests for that logic. This is rare in first MVPs — if you're writing complex algorithms, consider whether you're overbuilding.
+- No tests except for auth and payment flows and E2E smoke tests (`/change add E2E smoke tests`). Exception: if a feature contains non-trivial business logic (calculations, state machines, multi-step workflows), add unit tests for that logic. This is rare in first MVPs — if you're writing complex algorithms, consider whether you're overbuilding.
 - No abstraction layers unless there's concrete duplication (3+ copies)
 - Ship the simplest thing that works
 - No premature optimization — no caching, no memoization, no lazy loading unless there's a measured problem
@@ -87,9 +87,7 @@ Follow the framework patterns defined in your active framework stack file (`.cla
 ## Rule 10: Database
 Follow the database patterns defined in your active database stack file (`.claude/stacks/database/<value>.md`). That file specifies migration format, schema conventions, access control setup, and typing requirements. When no stack file exists for the configured database, use your knowledge of that technology and follow the same structural patterns. Always follow Rule 6 for security, and keep the schema minimal — only create tables that idea.yaml features require.
 
-## Rule 11: Failure Patterns
-- `.claude/failure-patterns.md` records project-specific error patterns discovered during build/lint failures
-- Skills read this file during context loading to avoid repeating past mistakes
-- The verification procedure in `.claude/patterns/verify.md` writes to this file when errors are fixed
-- Only project-specific patterns go here — universal stack patterns belong in `.claude/stacks/<category>/<value>.md`
-- Capped at 30 entries; oldest entries are removed when the cap is reached
+## Rule 11: Memory
+- After fixing build errors in the verification procedure, save project-specific patterns to auto memory
+- Universal patterns that apply to any project with this stack belong in `.claude/stacks/<category>/<value>.md` — not in auto memory
+- Auto memory is an accelerator, not a dependency — skills must function correctly with empty auto memory (fresh developer, fresh machine)

@@ -1,7 +1,7 @@
 # Retrospective Template
 
 This template guides a structured retrospective at the end of an experiment.
-To run a retro: `make retro` (or open Claude Code and run `/retro`).
+To run a retro: open Claude Code and run `/retro`.
 
 ## Part 1: Automated Data (Claude gathers this)
 
@@ -12,7 +12,6 @@ Claude runs these commands and presents a summary:
 - Count production dependencies from `package.json`
 - Read `idea/idea.yaml` — experiment name, title, target user, primary metric, target value
 - Read `EVENTS.yaml` — events being tracked
-- Read `.claude/failure-patterns.md` — build issues encountered (if file exists)
 
 ## Part 2: Four Questions (Claude asks these one at a time)
 
@@ -40,9 +39,8 @@ Claude generates a structured document with these sections:
 1. **Experiment Summary** — name, problem, solution, target user, outcome, metric results
 2. **Timeline & Activity** — commits, PRs, pages built, scope delivered
 3. **Stack Used** — from idea.yaml
-4. **Build Issues** — from failure-patterns.md (grouped by category)
-5. **Team Assessment** — answers to Q2-Q4
-6. **Template Improvement Suggestions** — specific, actionable changes mapped to template components
+4. **Team Assessment** — answers to Q2-Q4
+5. **Template Improvement Suggestions** — specific, actionable changes mapped to template components
 
 ## Part 4: File as GitHub Issue
 

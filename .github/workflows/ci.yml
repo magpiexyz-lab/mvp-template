@@ -20,7 +20,7 @@ jobs:
 
       - name: Shellcheck
         run: |
-          for script in scripts/run-skill.sh scripts/consistency-check.sh; do
+          for script in scripts/consistency-check.sh; do
             if [ -f "$script" ]; then
               shellcheck "$script"
             else

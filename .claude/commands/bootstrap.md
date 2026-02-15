@@ -4,16 +4,19 @@ reads:
   - idea/idea.yaml
   - EVENTS.yaml
   - CLAUDE.md
-  - .claude/failure-patterns.md
 stack_categories: [framework, database, auth, analytics, ui, payment, hosting]
 requires_approval: true
 references:
   - .claude/patterns/verify.md
-  - .claude/failure-patterns.md
+  - .claude/patterns/branch.md
 branch_prefix: feat
 modifies_specs: false
 ---
 Bootstrap the MVP from idea.yaml.
+
+## Step 0: Branch Setup
+
+Follow the branch setup procedure in `.claude/patterns/branch.md`. Use branch prefix `feat` and branch name `feat/bootstrap`.
 
 ## Phase 1: Plan (BEFORE writing any code)
 
@@ -23,22 +26,25 @@ DO NOT write any code, create any files, or run any install commands during this
    - Read `idea/idea.yaml` — this is the single source of truth
    - Read `EVENTS.yaml` — these are the canonical analytics events to wire up
    - Read `CLAUDE.md` — these are the rules to follow
-   - Read `.claude/failure-patterns.md` if it exists — project-specific error patterns from previous sessions
 
 2. **Resolve the stack**
-   - Read idea.yaml `stack`. For each category (framework, database, auth, analytics, ui, hosting, and optionally payment), read `.claude/stacks/<category>/<value>.md`.
+   - If `testing` is present in idea.yaml `stack`, stop and tell the user: "Testing must be added after the initial bootstrap is merged. Remove `testing:` from your idea.yaml `stack` section, run `/bootstrap`, merge the PR, then run `/change add E2E smoke tests` to add tests."
+   - Read idea.yaml `stack`. For each category present in idea.yaml `stack` (always: framework, analytics, ui, hosting; optional: database, auth, payment), read `.claude/stacks/<category>/<value>.md`. Note: `testing` is deliberately excluded from bootstrap — set it up via `/change add E2E smoke tests` after the initial scaffold is merged.
    - If a stack file doesn't exist for a given value, use your own knowledge of that technology and follow the same structural patterns as existing stack files.
    - These files define packages, library files, env vars, and patterns for each technology.
+   - For each stack file read, validate its `assumes` entries: every `category/value` in the file's `assumes` list must match a `category: value` pair in idea.yaml `stack`. If any assumption is unmet, stop and list the incompatibilities (e.g., "analytics/posthog assumes framework/nextjs, but your stack has framework: remix"). The user must either change the mismatched stack value or create a compatible stack file.
 
 3. **Validate idea.yaml**
    - Every one of these fields must be present and non-empty (strings must be non-blank, lists must have at least one item): `name`, `title`, `owner`, `problem`, `solution`, `target_user`, `distribution`, `pages`, `features`, `primary_metric`, `target_value`, `measurement_window`, `stack`
    - If ANY field still contains "TODO" or is missing: stop, list exactly which fields need to be filled in, and do nothing else
    - Verify `pages` includes an entry with `name: landing` (required)
    - Verify `name` is lowercase with hyphens only (no spaces, no uppercase)
+   - If `stack.payment` is present, verify `stack.auth` is also present. If not: stop and tell the user: "Payment requires authentication to identify the paying user. Add `auth: supabase` (or another auth provider) to your idea.yaml `stack` section."
+   - If `stack.payment` is present, verify `stack.database` is also present. If not: stop and tell the user: "Payment requires a database to record transaction state. Add `database: supabase` (or another database provider) to your idea.yaml `stack` section."
 
 4. **Check preconditions**
-   - If `package.json` exists AND the `src/` directory contains application files (check for any `.ts` or `.tsx` files): stop and tell the user: "This project has already been bootstrapped. Use `make change DESC=\"...\"` to make changes, or run `make clean` to start over."
-   - If `package.json` exists but the `src/` directory does NOT contain application files: warn the user: "A previous bootstrap may have partially completed. I'll continue from the beginning — packages may be reinstalled." Then proceed.
+   - If `package.json` exists AND the `src/` directory contains application files (check for any `.ts` or `.tsx` files): stop and tell the user: "This project has already been bootstrapped. Use `/change ...` to make changes, or run `make clean` to start over."
+   - If `package.json` exists but the `src/` directory does NOT contain application files: warn the user: "A previous bootstrap may have partially completed. I'll continue from the beginning — packages may be reinstalled." Note: the branch name `feat/bootstrap` may already exist from the previous attempt. If so, this run will use `feat/bootstrap-2` — you can delete the old branch later with `git branch -d feat/bootstrap`. Then proceed.
 
 5. **Present the plan** in plain language the user can verify:
 
@@ -81,18 +87,21 @@ DO NOT write any code, create any files, or run any install commands during this
 
 ### Step 1: Project initialization
 - Create `package.json` with `name` from idea.yaml and project setup from the framework stack file (.nvmrc, scripts, engines, tsconfig, config)
-- Install packages from all active stack files: framework, database, auth (if separate from database), analytics, and payment (if present in idea.yaml `stack`)
+- Install packages from all stack files whose categories are present in idea.yaml `stack`
 - Install dev dependencies from the framework and UI stack files
 - Run the UI setup commands from the UI stack file
 - After UI setup, verify the UI stack file's post-setup checks pass (PostCSS config, globals.css, scripts intact)
-- If any install command fails: stop, show the error, and ask the user to fix the environment issue before re-running
+- If any install command fails: stop, show the error, and ask the user to fix the environment issue. After fixing, tell Claude: "Continue the bootstrap on this branch from the install step." Claude will re-run the failed install and any subsequent install commands, then continue with Step 2. Do NOT re-run `/bootstrap` (that would create a duplicate branch).
 
 ### Step 2: Core library files
 - Create the library files specified in each stack file's "Files to Create" section:
   - Analytics library (from the analytics stack file)
-  - Database clients (from the database stack file)
-- If the auth stack file specifies additional files beyond what the database stack file provides, create those too
+  - If `stack.database` is present: database clients (from the database stack file)
+- If `stack.auth` is present, create auth files from the auth stack file using the correct conditional path:
+  - If `stack.database` matches the auth provider (e.g., both `supabase`): auth shares the database client files — only create auth-specific pages (signup, login)
+  - If `stack.database` is absent or a different provider: create standalone auth library files from the "Standalone Client" section (e.g., `supabase-auth.ts` instead of `supabase.ts`)
 - If `stack.payment` is present, create the payment library files from the payment stack file's "Files to Create" section. Note: the payment stack file's checkout route template intentionally references `user.id` which is undefined until auth is integrated — this will cause a build error at Checkpoint B that you must fix by adding the auth check (see the auth stack file's "Server-Side Auth Check" section). The webhook route template also contains a `// TODO: Update user's payment status in database` — unlike the auth check, this TODO compiles silently, so you must resolve it using the database schema planned in Phase 1.
+- Replace placeholder constants: In BOTH analytics library files (`src/lib/analytics.ts` and `src/lib/analytics-server.ts`), replace `PROJECT_NAME = "TODO"` with the `name` from idea.yaml and `PROJECT_OWNER = "TODO"` with the `owner` from idea.yaml. These constants auto-attach to every event — if left as TODO, experiment filtering will fail.
 - Generate `src/lib/events.ts` with typed track wrapper functions from EVENTS.yaml. For each event, create a function like `trackVisitLanding(props: { referrer?: string; utm_source?: string })` that calls `track("visit_landing", props)`. Only generate wrappers for standard_funnel events and (if stack.payment is present) payment_funnel events. Pages should import from `events.ts` instead of calling `track()` directly with string event names.
 
 ### Checkpoint A — verify library layer
@@ -116,7 +125,7 @@ For each entry in idea.yaml `pages`:
   - Fire the appropriate EVENTS.yaml event(s) on the correct trigger
   - If a standard_funnel event from EVENTS.yaml has no matching page in idea.yaml (e.g., no signup page for signup_start/signup_complete), omit that event — do not create a page just to fire it
 - **Landing page specifically**: headline from idea.yaml `title`, subheadline from `solution` (first sentence), CTA button linking to the next logical page (signup if it exists in idea.yaml pages, otherwise the first non-landing page; if landing is the only page, build the idea.yaml features as sections on the landing page below the hero and use a CTA that scrolls to the first feature section via anchor link (e.g., `href="#get-started"`) — do not link to a nonexistent route or add functionality beyond what is listed in `features`; if any feature is interactive (the user can take an action like submitting a form or creating a record), fire `activate` when they complete that action — if all features are descriptive with no user action, omit the `activate` event and note the omission in the PR body), fire the landing page event from EVENTS.yaml on mount with its specified properties
-- **Auth pages (if listed)**: signup/login forms using auth provider UI (see auth stack file). Fire the corresponding EVENTS.yaml events at their specified triggers
+- **Auth pages (if listed)**: signup/login forms using auth provider UI (see auth stack file). Fire the corresponding EVENTS.yaml events at their specified triggers. Update the post-auth redirect in signup and login pages to navigate to the first non-auth, non-landing page from idea.yaml (e.g., `/dashboard`). If no such page exists, keep the redirect to `/`.
 - **All other pages**: functional layout with heading, description matching the page's `purpose` from idea.yaml, and a clear next-action CTA. Not blank placeholders — each page should feel like a real (if minimal) screen
 
 ### Checkpoint B — verify pages layer
@@ -126,15 +135,16 @@ For each entry in idea.yaml `pages`:
 
 ### Step 5: API routes
 - Create the API routes directory per the framework stack file
-- If idea.yaml features imply mutations (creating records, payments, etc.), create corresponding API route handlers. For payment routes, use the templates from the payment stack file's "API Routes" section — these include auth-integration checks and webhook signature verification patterns that must not be omitted.
+- If idea.yaml features imply mutations (creating records, payments, etc.), create corresponding API route handlers. If `stack.payment` is present: for payment routes, use the templates from the payment stack file's "API Routes" section — these include auth-integration checks and webhook signature verification patterns that must not be omitted.
 - For the webhook handler's `// TODO: Update user's payment status in database` comment: resolve it using the database schema you planned in Phase 1. If no payments/subscriptions table was planned, add one to the migration in Step 6 and return here to wire the webhook update after the table exists.
-- Every API route: validate input with zod, use the server-side database client (from the database stack file), return proper HTTP status codes
+- Every API route: validate input with zod, return proper HTTP status codes. If `stack.database` is present, use the server-side database client for data access.
 - Follow the hosting stack file for rate limiting guidance in auth and payment API route handlers. Mention any limitations in the PR body so the user knows to address them before production
 
 ### Step 6: Database schema (if needed)
-If idea.yaml features require persistent data (user records, content, transactions, etc.):
+If `stack.database` is present and idea.yaml features require persistent data:
 - Follow the schema management approach from the database stack file
-- Create the initial migration with all tables needed for idea.yaml features
+- Create the initial migration with all tables needed for idea.yaml features. Migration numbering is based on the current branch state — concurrent branches may create conflicting numbers, which should be resolved by renumbering at merge time.
+- If `stack.payment` is present and a payments/subscriptions table was created: return to the webhook handler (`src/app/api/webhooks/stripe/route.ts`) and resolve the `// TODO: Update user's payment status in database` using the new table before proceeding to Step 7.
 - Also create `src/lib/types.ts` with TypeScript types matching the table schemas
 - Include post-merge database setup instructions in the PR body (see database stack file's "PR Instructions" section)
 
@@ -147,7 +157,7 @@ If no features require database tables, skip this step.
 - Follow the verification procedure in `.claude/patterns/verify.md` (build & lint with retry)
 
 ### Step 9: Commit, push, open PR
-- You are already on a feature branch (created by run-skill.sh). Do not create another branch.
+- You are already on a feature branch (created in Step 0). Do not create another branch.
 - Stage all new files and commit: "Bootstrap MVP scaffold from idea.yaml"
 - Push and open PR using the `.github/PULL_REQUEST_TEMPLATE.md` format:
   - **Summary**: plain-English explanation — "Full MVP scaffold generated from idea.yaml" with key highlights

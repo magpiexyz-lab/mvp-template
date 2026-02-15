@@ -6,6 +6,8 @@ packages:
 files:
   - src/lib/stripe.ts
   - src/lib/stripe-client.ts
+  - src/app/api/checkout/route.ts
+  - src/app/api/webhooks/stripe/route.ts
 env:
   server: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET]
   client: [NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY]
@@ -32,12 +34,9 @@ npm install stripe @stripe/stripe-js
 ```ts
 import Stripe from "stripe";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  // Use the latest stable Stripe API version — check https://stripe.com/docs/upgrades
-  apiVersion: "2024-12-18.acacia",
-});
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 ```
-- **Important:** The `apiVersion` above may be outdated. When generating this file, always check the [Stripe API changelog](https://stripe.com/docs/upgrades#api-versions) and use the latest stable version.
+- The Stripe SDK automatically uses the API version bundled with the installed package. To pin a specific version, add `apiVersion` — see https://stripe.com/docs/upgrades.
 - Use this in API route handlers only — never import in client components
 
 ### `src/lib/stripe-client.ts` — Client-side Stripe loader
@@ -160,7 +159,8 @@ export async function POST(request: Request) {
 Notes:
 - Reads the raw request body (do NOT parse JSON before verification)
 - Verifies the webhook signature using `STRIPE_WEBHOOK_SECRET`
-- Handles `checkout.session.completed` event: updates payment status and fires `pay_success` server-side via `trackServerEvent()` with all required EVENTS.yaml properties (`plan`, `amount_cents`, `provider`)
+- Handles `checkout.session.completed` event: should update payment status (see TODO in template) and fires `pay_success` server-side via `trackServerEvent()` with all required EVENTS.yaml properties (`plan`, `amount_cents`, `provider`)
+- The `// TODO: Update user's payment status in database` compiles silently — unlike the checkout route's `user.id` reference which fails the build. You must implement the database update using the `userId` extracted from session metadata before the payment flow is complete. Without this, successful payments are not recorded.
 - Extracts `user_id`, `plan`, and `amount_cents` from session metadata (set during checkout creation)
 - Returns `200` for all event types (don't error on unknown events)
 

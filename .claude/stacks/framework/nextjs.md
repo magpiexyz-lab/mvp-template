@@ -9,6 +9,7 @@ files:
   - src/app/page.tsx
   - src/app/not-found.tsx
   - src/app/error.tsx
+  - src/components/RetainTracker.tsx
 env:
   server: []
   client: []

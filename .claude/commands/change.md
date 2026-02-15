@@ -3,16 +3,20 @@ type: code-writing
 reads:
   - idea/idea.yaml
   - EVENTS.yaml
-  - .claude/failure-patterns.md
+  - CLAUDE.md
 stack_categories: [framework, database, auth, analytics, ui, payment, testing, hosting]
 requires_approval: true
 references:
   - .claude/patterns/verify.md
-  - .claude/failure-patterns.md
+  - .claude/patterns/branch.md
 branch_prefix: change
 modifies_specs: true
 ---
 Make a change to the existing app: $ARGUMENTS
+
+## Step 0: Branch Setup
+
+Follow the branch setup procedure in `.claude/patterns/branch.md`. Use branch prefix `change` and slugify `$ARGUMENTS` for the branch name.
 
 ## Step 1: Validate input
 
@@ -25,13 +29,15 @@ Make a change to the existing app: $ARGUMENTS
 - Read `EVENTS.yaml` — understand existing analytics events (this is the canonical event list)
 - Resolve the stack: read idea.yaml `stack`. For each category, read `.claude/stacks/<category>/<value>.md`. If a stack file doesn't exist, use your knowledge of that technology.
 - Scan `src/app/` to understand the current page structure and codebase state
-- Read `.claude/failure-patterns.md` if it exists — project-specific error patterns from previous sessions
 
 ## Step 3: Check preconditions
 
-- Verify `package.json` exists. If not, stop and tell the user: "No app found. Run `make bootstrap` first, or if you already have a bootstrap PR open, merge it before running `make change`."
-- Run `npm run build` to confirm the project compiles before making changes (unless the change IS about fixing the build or is classified as a Fix). If the build fails and the change is not a build fix or Fix-type change: stop and tell the user: "The app has build errors that need to be fixed first. Run `make change DESC=\"fix build errors\"` to address them, then re-run your original change."
-- For analytics changes: verify the analytics library file exists (see analytics stack file for expected path). If it doesn't, stop and tell the user: "Analytics library not found. Run `make bootstrap` first."
+- Verify `package.json` exists. If not, stop and tell the user: "No app found. Run `/bootstrap` first, or if you already have a bootstrap PR open, merge it before running `/change`."
+- Verify `EVENTS.yaml` exists. If not, stop and tell the user: "EVENTS.yaml not found. This file defines all analytics events and is required. Restore it from your template repo or re-create it following the format in the EVENTS.yaml section of the template."
+- Run `npm run build` to confirm the project compiles before making changes (unless the change IS about fixing the build or is classified as a Fix). If the build fails and the change is not a build fix or Fix-type change: stop and tell the user: "The app has build errors that need to be fixed first. Run `/change fix build errors` to address them. After that PR is merged, re-run your original change. Note: the current branch will be abandoned — this is expected. You can delete it later with `git branch -d` followed by the branch name created in Step 0. Re-running `/change` creates a new branch (the name may have a numeric suffix like `-2` if the old branch still exists)."
+- For analytics changes: verify the analytics library file exists (see analytics stack file for expected path). If it doesn't, stop and tell the user: "Analytics library not found. Run `/bootstrap` first."
+- If `$ARGUMENTS` mentions payment or the change will add `payment` to the stack: verify `stack.auth` and `stack.database` are present in idea.yaml. If `stack.auth` is missing, stop: "Payment requires authentication. Add `auth: supabase` (or another auth provider) to idea.yaml `stack` first." If `stack.database` is missing, stop: "Payment requires a database. Add `database: supabase` (or another database provider) to idea.yaml `stack` first."
+- If classified as Test type: read the testing stack file's `assumes` list and check each `category/value` against idea.yaml `stack` (per bootstrap's validation approach: the value must match, not just the category). Record the result — this determines the template path reported in the plan.
 
 ## Step 4: Classify the change
 
@@ -136,6 +142,8 @@ Present the plan using the format for the classified type:
 
 **Files to Create/Modify:**
 - [list of files]
+
+**Template path:** Full templates (all assumes met) | No-Auth Fallback (assumes unmet: [list unmet category/value pairs])
 ```
 
 ### STOP. End your response here. Say:
@@ -152,17 +160,19 @@ If the user requests changes instead of approving, revise the plan to address th
 
 - **Feature**: add the new feature to idea.yaml `features` list. Add any new pages to `pages` list. Do NOT remove or modify existing features or pages.
 - **Analytics**: if the user approved custom events, add them to `custom_events` in EVENTS.yaml following the `<object>_<action>` naming convention with all properties.
-- **Fix / Polish / Test**: do NOT modify idea.yaml or EVENTS.yaml.
+- **Fix / Polish**: do NOT modify idea.yaml or EVENTS.yaml.
+- **Test**: do NOT modify EVENTS.yaml. If adding tests for the first time (no `stack.testing` in idea.yaml and no `playwright.config.ts` on disk), add `testing: <value>` to idea.yaml `stack` section. Do not modify other parts of idea.yaml.
 
 ### Step 6: Make changes (type-specific)
 
 #### Feature constraints
-- If the change requires a stack category whose library files don't exist yet (e.g., `payment: stripe` was just added to idea.yaml but `src/lib/stripe.ts` is missing): install the packages listed in the stack file's "Packages" section, create the library files from its "Files to Create" section, and add its environment variables to `.env.example` — before proceeding to routes and pages. If any install command fails, stop and show the error — the user must fix the environment issue before continuing.
+- If adding `payment` to idea.yaml `stack`: verify both `stack.auth` and `stack.database` are also present. If `stack.auth` is missing, stop and tell the user: "Payment requires authentication to identify the paying user. Add `auth: supabase` (or another auth provider) to idea.yaml `stack` first." If `stack.database` is missing, stop and tell the user: "Payment requires a database to record transaction state. Add `database: supabase` (or another database provider) to your idea.yaml `stack` section."
+- If the change requires a stack category whose library files don't exist yet (e.g., `payment: stripe` was just added to idea.yaml but `src/lib/stripe.ts` is missing): install the packages listed in the stack file's "Packages" section, create the library files from its "Files to Create" section, and add its environment variables to `.env.example` — before proceeding to routes and pages. If any install command fails, stop and show the error — the user must fix the environment issue, then retry the failed install command on this branch (do NOT re-run `/change`).
 - Wire analytics: every user action in the new feature must fire a tracked event
 - Create new pages following the framework stack file's file structure
 - Every new page: follow page conventions from the framework stack file, import tracking functions per the analytics stack file, fire appropriate EVENTS.yaml events
-- Create or modify API routes for any new mutations (see framework stack file for route conventions). Every API route: validate input with zod, use server-side database client, return proper HTTP status codes
-- If database tables are needed: create a migration following the database stack file (next sequential number, `IF NOT EXISTS`), add TypeScript types, add post-merge instructions to PR body
+- Create or modify API routes for any new mutations (see framework stack file for route conventions). Every API route: validate input with zod, return proper HTTP status codes. If `stack.database` is present, use the server-side database client for data access.
+- If database tables are needed: create a migration following the database stack file (next sequential number, `IF NOT EXISTS`), add TypeScript types, add post-merge instructions to PR body. Note: concurrent branches may create conflicting migration numbers — resolve by renumbering the later-merged migration at merge time.
 - **If Multi-layer**: implement in two sub-steps with an intermediate build check:
   - Sub-step 6a — Data and server layer (migrations, types, API routes)
   - Checkpoint: run `npm run build`. Fix errors before proceeding. If still broken after 2 attempts, proceed to Sub-step 6b without retrying — Step 7 (verification) has its own 3-attempt retry budget.
@@ -194,9 +204,10 @@ If the user requests changes instead of approving, revise the plan to address th
 - Install packages per the testing stack file, create config and helpers per the testing stack file templates
 - Test funnel happy path only — skip error states, edge cases, and `retain_return`
 - Read actual page source code for selectors — never guess
-- Call `blockAnalytics(page)` in `beforeEach` to prevent analytics pollution
+- Call `blockAnalytics(page)` in `beforeEach` to prevent analytics pollution. The default `blockAnalytics` route pattern targets PostHog — if the analytics provider is different, adapt the route pattern using the endpoint domain from the analytics stack file.
 - For payment tests: use Stripe test card `4242424242424242`
-- Update `.gitignore`, `.env.example`, and CI workflow per the testing stack file
+- Before applying testing stack file templates: read the testing stack file's `assumes` list. For each `category/value` entry, verify that idea.yaml `stack` has a matching `category: value` pair (e.g., `analytics/posthog` requires `stack.analytics: posthog`, not just that `analytics` is present). If ALL assumed dependencies match → use the full templates (global-setup/teardown, login helper, auth-based tests). If ANY assumed dependency is unmet → use the testing stack file's "No-Auth Fallback" section instead (no global-setup/teardown, no login helper, tests run as anonymous visitors). Document the chosen path in the PR body.
+- Update `.gitignore` and CI workflow per the testing stack file. Add env vars to `.env.example` based on the chosen template path (full or no-auth fallback), not solely from the frontmatter.
 
 ### Step 7: Verify
 - Follow the verification procedure in `.claude/patterns/verify.md` (build & lint with retry)
@@ -205,10 +216,10 @@ If the user requests changes instead of approving, revise the plan to address th
   - **Fix**: trace the bug report's user flow through code to confirm it's fixed.
   - **Polish**: open each changed file and confirm analytics imports and event calls are intact.
   - **Analytics**: re-trace each standard funnel event through the code to confirm it now fires correctly.
-  - **Test**: run `npx playwright test --list` to verify test discovery works.
+  - **Test**: run `npx playwright test --list` to verify test discovery works. If test discovery fails, treat it as a build error — fix the test files and re-run. If still failing after the verify.md retry budget, report to the user with the error output.
 
 ### Step 8: Commit, push, open PR
-- You are already on a feature branch (created by run-skill.sh). Do not create another branch.
+- You are already on a feature branch (created in Step 0). Do not create another branch.
 - Commit message: imperative mood describing the change (e.g., "Add invoice email reminders", "Fix email validation on signup form", "Polish landing copy and error states")
 - Push and open PR using `.github/PULL_REQUEST_TEMPLATE.md` format:
   - **Summary**: plain-English description of the change

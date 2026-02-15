@@ -1,0 +1,67 @@
+# Test fixture: Auth + testing without database (partial assumes)
+# Exercises the testing stack's partial-assumes path: auth present, database absent.
+# Tests use the No-Auth Fallback because database (an assumed dependency) is missing.
+idea:
+  name: test-auth-tests
+  title: Auth+Tests — Authenticated App with E2E Tests but No Database
+  owner: tester
+  template_repo: acme/experiment-template
+
+  problem: |
+    Users want to validate an authenticated workflow backed by a third-party API
+    before investing in a database layer.
+
+  solution: |
+    An authenticated app with Supabase Auth (standalone client) and Playwright E2E tests
+    running via the No-Auth Fallback path — no database, no global-setup/teardown.
+
+  target_user: Developers prototyping auth-gated features without a database
+
+  distribution: |
+    Share in developer communities and forums.
+
+  pages:
+    - name: landing
+      purpose: Explain the app and direct users to sign up
+    - name: signup
+      purpose: Email/password registration form
+    - name: login
+      purpose: Email/password login form
+    - name: dashboard
+      purpose: Show data fetched from external API for the logged-in user
+
+  features:
+    - User authentication via email/password
+    - Dashboard displaying external API data for the authenticated user
+
+  primary_metric: Authenticated users
+  target_value: "20 users sign up in 1 week"
+  measurement_window: 1 week
+
+  stack:
+    framework: nextjs
+    auth: supabase
+    analytics: posthog
+    ui: shadcn
+    hosting: vercel
+    testing: playwright
+
+events:
+  standard_funnel:
+    - event: visit_landing
+      trigger: User loads the landing page
+    - event: signup_start
+      trigger: User opens the registration form
+    - event: signup_complete
+      trigger: User successfully creates an account
+    - event: activate
+      trigger: User views their dashboard for the first time
+    - event: retain_return
+      trigger: User returns after 24+ hours
+  custom_events: []
+
+assertions:
+  payment_events_required: false
+  activate_required: true
+  skippable_events: []
+  min_pages: 4

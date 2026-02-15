@@ -6,7 +6,7 @@
 # HOW TO FILL THIS IN:
 # 1. Replace every "TODO" value with your actual content
 # 2. Keep the YAML structure as-is — don't rename keys or change indentation
-# 3. When you're done, run: make bootstrap
+# 3. When you're done, open Claude Code and run: /bootstrap
 
 # --- Identity ---
 name: TODO                  # Lowercase slug, hyphens only (e.g., "quick-bill"). Used in analytics.

@@ -166,6 +166,15 @@ NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 - All projects in the company share the same analytics project — these properties distinguish experiments
 - If you rename the project in idea.yaml (`name` field), update the `PROJECT_NAME` and `PROJECT_OWNER` constants in both `src/lib/analytics.ts` and `src/lib/analytics-server.ts`
 
+## Test Blocking
+When running E2E tests, block analytics requests to prevent test data from polluting production analytics. The endpoint pattern for PostHog is:
+```
+**/posthog*/**
+```
+This matches the PostHog ingestion endpoint (e.g., `https://us.i.posthog.com`). Playwright's `page.route()` uses this pattern to intercept and abort analytics requests. See the testing stack file's `blockAnalytics` helper for usage.
+
+When creating a new analytics stack file, document the equivalent endpoint pattern so the testing stack file can adapt its route blocking.
+
 ## Audit Checklist (for /change skill — analytics type)
 - Verify `track()` in `analytics.ts` and `trackServerEvent()` in `analytics-server.ts` both exist and auto-attach `project_name` and `project_owner`
 - Verify `project_name` and `project_owner` values match idea.yaml in both files

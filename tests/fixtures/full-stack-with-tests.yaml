@@ -1,0 +1,82 @@
+# Test fixture: Full-stack app with Playwright testing
+# Mirrors full-stack fixture + testing: playwright to exercise test stack coverage.
+idea:
+  name: test-full-stack-tests
+  title: FullStack+Tests — Complete MVP with Auth, Payment, Database, and E2E Tests
+  owner: tester
+  template_repo: acme/experiment-template
+
+  problem: |
+    Freelancers billing fewer than 5 clients per month waste time on invoicing.
+    They bounce between spreadsheets and manual payment follow-ups.
+
+  solution: |
+    A single-page invoicing tool where freelancers create an invoice in under 60 seconds,
+    send a payment link to clients, and get notified when paid.
+
+  target_user: Freelance designers and developers billing 1-5 clients per month
+
+  distribution: |
+    Post launch in r/freelance and Indie Hackers. LinkedIn posts targeting freelancers.
+
+  pages:
+    - name: landing
+      purpose: Explain value prop, show pricing, collect signups
+    - name: signup
+      purpose: Email/password registration form
+    - name: login
+      purpose: Email/password login form
+    - name: dashboard
+      purpose: List all invoices with status and total revenue
+    - name: invoice-create
+      purpose: Form to create a new invoice with line items
+    - name: invoice-view
+      purpose: Public shareable invoice page with pay button
+    - name: settings
+      purpose: Profile, business details, Stripe connection
+
+  features:
+    - Create invoices with line items, tax, and due date
+    - Send invoice link to client via email
+    - Stripe checkout for client payments
+    - Dashboard showing invoice statuses and total revenue
+    - Email reminders for overdue invoices
+
+  primary_metric: Paid invoices
+  target_value: "10 freelancers send at least 1 paid invoice"
+  measurement_window: 2 weeks
+
+  stack:
+    framework: nextjs
+    hosting: vercel
+    database: supabase
+    auth: supabase
+    analytics: posthog
+    ui: shadcn
+    payment: stripe
+    testing: playwright
+
+events:
+  standard_funnel:
+    - event: visit_landing
+      trigger: User loads the landing page
+    - event: signup_start
+      trigger: User opens the registration form
+    - event: signup_complete
+      trigger: User successfully creates an account
+    - event: activate
+      trigger: User creates their first invoice
+    - event: retain_return
+      trigger: User returns after 24+ hours
+  payment_funnel:
+    - event: pay_start
+      trigger: Client clicks pay button on invoice
+    - event: pay_success
+      trigger: Payment confirmed via Stripe webhook
+  custom_events: []
+
+assertions:
+  payment_events_required: true
+  activate_required: true
+  skippable_events: []
+  min_pages: 7

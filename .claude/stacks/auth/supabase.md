@@ -1,17 +1,19 @@
 ---
 assumes: [framework/nextjs]
 packages:
-  runtime: []
+  runtime: ["@supabase/supabase-js", "@supabase/ssr"]
   dev: []
-files:
+files:  # conditional: pages require idea.yaml entry; library files only when stack.database is not supabase
   - src/app/signup/page.tsx
   - src/app/login/page.tsx
   - src/lib/supabase-auth.ts
   - src/lib/supabase-auth-server.ts
 env:
   server: []
-  client: []
-ci_placeholders: {}
+  client: [NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY]
+ci_placeholders:
+  NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
 clean:
   files: []
   dirs: []
@@ -45,6 +47,7 @@ npm install @supabase/supabase-js @supabase/ssr
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { trackSignupStart, trackSignupComplete } from "@/lib/events";
 import { Button } from "@/components/ui/button";
@@ -57,6 +60,7 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => { trackSignupStart({ method: "email" }); }, []);
 
@@ -72,7 +76,7 @@ export default function SignupPage() {
     setLoading(false);
     if (authError) { setError(authError.message); return; }
     trackSignupComplete({ method: "email" });
-    // TODO: Redirect to post-signup page (e.g., dashboard)
+    router.push("/"); // Redirect to landing — bootstrap will update to the first non-auth page from idea.yaml
   }
 
   return (
@@ -117,6 +121,7 @@ Follows the same structure as the signup page above, with these differences:
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,6 +133,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -136,7 +142,7 @@ export default function LoginPage() {
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (authError) { setError(authError.message); return; }
-    // TODO: Redirect to post-login page (e.g., dashboard)
+    router.push("/"); // Redirect to landing — bootstrap will update to the first non-auth page from idea.yaml
   }
 
   return (
@@ -206,7 +212,7 @@ if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 - Fire `signup_complete` on successful account creation (include `method` property)
 
 ## Shared Client Note
-When `stack.auth` matches `stack.database` (both `supabase`), they share the same client files (`supabase.ts` and `supabase-server.ts`). When different, auth needs its own library file — see "Standalone Client" below.
+When `stack.auth` matches `stack.database` (both `supabase`), they share the same client files (`supabase.ts` and `supabase-server.ts`). When `stack.database` is absent or a different provider, auth needs its own library file — see "Standalone Client" below.
 
 ### Standalone Client (when `stack.database` is not supabase)
 

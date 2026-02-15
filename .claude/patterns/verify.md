@@ -31,37 +31,18 @@ For each attempt:
 > **Your options:**
 > 1. Tell me what to try and I'll fix it
 > 2. Save current progress first: `git add -A && git commit -m "WIP: build not passing yet"` — then decide next steps
-> 3. Run `make clean` then `make bootstrap` to start fresh (**warning:** this deletes all code — use option 2 first if you want to preserve anything)
-> 4. Switch to this branch later (`git checkout <branch>`) and run `claude` to resume
+> 3. Save progress with option 2 first (if desired), then switch to main (`git checkout main`), run `make clean`, and `/bootstrap` to start fresh (**warning:** `make clean` deletes all generated code — anything not committed will be permanently lost)
+> 4. Switch to this branch later (`git checkout <branch>`) and describe the remaining build errors directly — do not re-run `/bootstrap` or `/change`, as those create new branches. Instead, just tell Claude what errors remain and it will fix them on this branch.
 
 Do NOT commit code that fails build or lint. Do NOT skip this procedure.
 
-## Log Failure Patterns (if you fixed any errors above)
+## Save Notable Patterns (if you fixed any errors above)
 
-After a successful verification where you fixed build or lint errors, log what you learned:
+After a successful verification where you fixed build or lint errors:
 
-1. Read `.claude/failure-patterns.md` (if it doesn't exist, create it with this content:)
-   ```
-   # Failure Patterns
-   <!-- Lessons learned from build/lint failures in this project. -->
-   <!-- Max 30 entries. When full, remove the oldest entry (top) before adding. -->
-   <!-- Only project-specific patterns. Universal patterns go in stack files. -->
-
-   ## Patterns
-
-   (none yet)
-   ```
-2. For each error you fixed, decide: is this project-specific or universal?
+1. For each error you fixed, decide: is this **universal** or **project-specific**?
    - **Universal** (applies to any project with this stack): add the pattern to the relevant
      `.claude/stacks/<category>/<value>.md` file instead
-   - **Project-specific** (unique to this codebase): add an entry to `.claude/failure-patterns.md`
-3. Entry format — append to the `## Patterns` section:
-   ```
-   - **Error:** `<error message or symptom>`
-     **Cause:** <why it happened in one sentence>
-     **Fix:** <what you did to fix it in one sentence>
-     **Category:** <short-kebab-case-tag>
-   ```
-4. Before adding: check if an entry with the same Category exists. If so, update it instead.
-5. If the file has 30+ entries, remove the oldest entry (first in list) before adding.
-6. Skip logging if: the error was a simple typo or something unlikely to recur.
+   - **Project-specific** (unique to this codebase): save a brief entry to your auto memory
+     with the error, cause, and fix
+2. Skip if: the error was a simple typo or something unlikely to recur

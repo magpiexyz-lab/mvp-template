@@ -11,14 +11,11 @@ set -euo pipefail
 
 ERRORS=0
 
-# Derive code-writing skills dynamically (all commands minus analysis-only ones)
-# Source of truth for analysis-only: scripts/run-skill.sh ANALYSIS_ONLY_SKILLS
-ANALYSIS_ONLY=$(grep '^ANALYSIS_ONLY_SKILLS=' scripts/run-skill.sh 2>/dev/null | cut -d'"' -f2)
+# Derive code-writing skills dynamically from frontmatter type
 CODE_WRITING_SKILLS=()
 for f in .claude/commands/*.md; do
   [ -f "$f" ] || continue
-  name=$(basename "$f" .md)
-  if ! echo " $ANALYSIS_ONLY " | grep -q " $name "; then
+  if head -20 "$f" | grep -q 'type: code-writing'; then
     CODE_WRITING_SKILLS+=("$f")
   fi
 done
@@ -83,14 +80,7 @@ check_absent ".claude/commands/change.md" 'src/app/api/' \
 check_absent ".claude/commands/change.md" 'src/lib/types\.ts' \
   "hardcoded types path (should reference database stack file)"
 
-# 8. Failure patterns file size bound
-if [ -f ".claude/failure-patterns.md" ]; then
-  ENTRY_COUNT=$(grep -c '^\- \*\*Error:\*\*' .claude/failure-patterns.md 2>/dev/null || true)
-  if [ "$ENTRY_COUNT" -gt 30 ]; then
-    echo "FAIL: .claude/failure-patterns.md has $ENTRY_COUNT entries (max 30). Prune oldest entries."
-    ERRORS=$((ERRORS + 1))
-  fi
-fi
+# 8. (removed)
 
 # 9. Hardcoded analytics path in PR template
 check_absent ".github/PULL_REQUEST_TEMPLATE.md" 'src/lib/analytics' \
@@ -105,32 +95,7 @@ for f in "${CODE_WRITING_SKILLS[@]}"; do
   fi
 done
 
-# 11. All code-writing skills reference failure-patterns.md
-for f in "${CODE_WRITING_SKILLS[@]}"; do
-  [ -f "$f" ] || continue
-  if ! grep -q 'failure-patterns.md' "$f"; then
-    echo "FAIL: $f — missing failure-patterns.md reference (all code-writing skills should read failure patterns)"
-    ERRORS=$((ERRORS + 1))
-  fi
-done
-
-# 12. Makefile skill targets match command files
-if [ -f "Makefile" ]; then
-  makefile_skills=$(grep -oE 'run-skill\.sh [a-z-]+' Makefile | awk '{print $2}' | sort -u)
-  command_skills=$(ls .claude/commands/*.md 2>/dev/null | xargs -I{} basename {} .md | sort -u)
-  for skill in $command_skills; do
-    if ! echo "$makefile_skills" | grep -qx "$skill"; then
-      echo "FAIL: .claude/commands/${skill}.md has no Makefile target"
-      ERRORS=$((ERRORS + 1))
-    fi
-  done
-  for skill in $makefile_skills; do
-    if [ ! -f ".claude/commands/${skill}.md" ]; then
-      echo "FAIL: Makefile target ${skill} has no .claude/commands/${skill}.md"
-      ERRORS=$((ERRORS + 1))
-    fi
-  done
-fi
+# 11. (removed)
 
 echo ""
 if [ "$ERRORS" -gt 0 ]; then

@@ -101,7 +101,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ## Patterns
 - Browser client (`supabase.ts`) for client-side components
 - Server client (`supabase-server.ts`) for API routes — always verify session server-side
-- When creating a new migration, use the next sequential number after existing migrations
+- When creating a new migration, use the next sequential number after existing migrations. Note: concurrent branches may create conflicting numbers (e.g., two branches both create `002_*.sql`) — resolve by renumbering the later-merged migration at merge time. This is acceptable for MVP workflows.
 
 ## PR Instructions
 - When creating migrations, add to the PR body: "After merging, run `supabase/migrations/<filename>.sql` in your Supabase Dashboard -> SQL Editor"

@@ -8,13 +8,13 @@ Checks:
   Skill structural:
     3. Required frontmatter keys present in every skill file
     4. Every `references` file path exists on disk
-    5. code-writing skills must reference verify.md and failure-patterns.md
+    5. code-writing skills must reference verify.md
+    6. code-writing skills must reference branch.md
   Cross-file:
-    6. analysis-only skills match ANALYSIS_ONLY_SKILLS in run-skill.sh
-    7. Makefile skill targets ↔ .claude/commands/*.md are 1:1
-    8. CLAUDE.md Rule 0 skill list matches actual skill filenames
-    9. Union of ci_placeholders keys appears in ci.yml
-   10. All ci_placeholders values are covered by .gitleaks.toml allowlist
+    7. CLAUDE.md Rule 0 skill list matches actual skill filenames
+    8. Union of ci_placeholders keys appears in ci.yml
+    9. All ci_placeholders values are covered by .gitleaks.toml allowlist
+    10. Skill branch_prefix values appear in CLAUDE.md Rule 1
 """
 
 import glob
@@ -122,7 +122,7 @@ for sf, data in skill_data.items():
             error(f"[4] {sf}: references '{ref}' but file does not exist")
 
 # ---------------------------------------------------------------------------
-# Check 5: code-writing skills must reference verify.md and failure-patterns.md
+# Check 5: code-writing skills must reference verify.md
 # ---------------------------------------------------------------------------
 
 for sf, data in skill_data.items():
@@ -132,59 +132,21 @@ for sf, data in skill_data.items():
     ref_basenames = [os.path.basename(r) for r in refs]
     if "verify.md" not in ref_basenames:
         error(f"[5] {sf}: code-writing skill missing verify.md in references")
-    if "failure-patterns.md" not in ref_basenames:
-        error(
-            f"[5] {sf}: code-writing skill missing failure-patterns.md in references"
-        )
 
 # ---------------------------------------------------------------------------
-# Check 6: analysis-only skills match ANALYSIS_ONLY_SKILLS in run-skill.sh
+# Check 6: code-writing skills must reference branch.md
 # ---------------------------------------------------------------------------
 
-frontmatter_analysis = sorted(
-    os.path.basename(sf).replace(".md", "")
-    for sf, data in skill_data.items()
-    if data.get("type") == "analysis-only"
-)
-
-run_skill_path = "scripts/run-skill.sh"
-shell_analysis: list[str] = []
-if os.path.isfile(run_skill_path):
-    with open(run_skill_path) as f:
-        for line in f:
-            m = re.match(r'^ANALYSIS_ONLY_SKILLS="(.*)"', line)
-            if m:
-                shell_analysis = sorted(m.group(1).split())
-                break
-
-if frontmatter_analysis != shell_analysis:
-    error(
-        f"[6] analysis-only mismatch: frontmatter={frontmatter_analysis} "
-        f"vs run-skill.sh={shell_analysis}"
-    )
+for sf, data in skill_data.items():
+    if data.get("type") != "code-writing":
+        continue
+    refs = data.get("references", [])
+    ref_basenames = [os.path.basename(r) for r in refs]
+    if "branch.md" not in ref_basenames:
+        error(f"[6] {sf}: code-writing skill missing branch.md in references")
 
 # ---------------------------------------------------------------------------
-# Check 7: Makefile skill targets ↔ .claude/commands/*.md are 1:1
-# ---------------------------------------------------------------------------
-
-if os.path.isfile("Makefile"):
-    with open("Makefile") as f:
-        makefile_content = f.read()
-    makefile_skills = sorted(
-        set(re.findall(r"run-skill\.sh\s+([a-z][-a-z]*)", makefile_content))
-    )
-    command_skills = sorted(
-        os.path.basename(f).replace(".md", "") for f in skill_files
-    )
-    for skill in command_skills:
-        if skill not in makefile_skills:
-            error(f"[7] .claude/commands/{skill}.md has no Makefile target")
-    for skill in makefile_skills:
-        if skill not in command_skills:
-            error(f"[7] Makefile target '{skill}' has no .claude/commands/{skill}.md")
-
-# ---------------------------------------------------------------------------
-# Check 8: CLAUDE.md Rule 0 parenthetical skill list matches actual filenames
+# Check 7: CLAUDE.md Rule 0 parenthetical skill list matches actual filenames
 # ---------------------------------------------------------------------------
 
 if os.path.isfile("CLAUDE.md"):
@@ -203,14 +165,39 @@ if os.path.isfile("CLAUDE.md"):
         )
         if claude_skills != actual_skills:
             error(
-                f"[8] CLAUDE.md Rule 0 skill list mismatch: "
+                f"[7] CLAUDE.md Rule 0 skill list mismatch: "
                 f"claude.md={claude_skills} vs actual={actual_skills}"
             )
     else:
-        error("[8] Could not find Rule 0 skill list pattern in CLAUDE.md")
+        error("[7] Could not find Rule 0 skill list pattern in CLAUDE.md")
 
 # ---------------------------------------------------------------------------
-# Check 9: Union of ci_placeholders keys appears in ci.yml
+# Check 10: Skill branch_prefix values appear in CLAUDE.md Rule 1
+# ---------------------------------------------------------------------------
+
+if os.path.isfile("CLAUDE.md"):
+    with open("CLAUDE.md") as f:
+        claude_content_r1 = f.read()
+    # Match Rule 1 branch naming line: `feat/<topic>`, `fix/<topic>`, etc.
+    r1_match = re.search(
+        r"Branch naming:\s*(.+)", claude_content_r1
+    )
+    if r1_match:
+        allowed_prefixes = set(
+            re.findall(r"`(\w+)/<", r1_match.group(1))
+        )
+        for sf, data in skill_data.items():
+            prefix = data.get("branch_prefix", "")
+            if prefix and prefix not in allowed_prefixes:
+                error(
+                    f"[10] {sf}: branch_prefix '{prefix}' not in "
+                    f"CLAUDE.md Rule 1 allowed prefixes {sorted(allowed_prefixes)}"
+                )
+    else:
+        error("[10] Could not find Rule 1 branch naming pattern in CLAUDE.md")
+
+# ---------------------------------------------------------------------------
+# Check 8: Union of ci_placeholders keys appears in ci.yml
 # ---------------------------------------------------------------------------
 
 ci_yml_path = ".github/workflows/ci.yml"
@@ -225,10 +212,10 @@ if os.path.isfile(ci_yml_path):
 
     for key in sorted(all_placeholder_keys):
         if key not in ci_content:
-            error(f"[9] ci_placeholders key '{key}' not found in {ci_yml_path}")
+            error(f"[8] ci_placeholders key '{key}' not found in {ci_yml_path}")
 
 # ---------------------------------------------------------------------------
-# Check 10: All ci_placeholders values covered by .gitleaks.toml allowlist
+# Check 9: All ci_placeholders values covered by .gitleaks.toml allowlist
 # ---------------------------------------------------------------------------
 
 gitleaks_path = ".gitleaks.toml"
@@ -258,7 +245,7 @@ if os.path.isfile(gitleaks_path):
                 pass
         if not matched:
             error(
-                f"[10] ci_placeholder value '{val}' not matched by any "
+                f"[9] ci_placeholder value '{val}' not matched by any "
                 f".gitleaks.toml allowlist pattern"
             )
 

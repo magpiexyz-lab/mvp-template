@@ -1,0 +1,65 @@
+# Test fixture: Auth without database
+# Exercises the auth/supabase standalone client path (no database: supabase).
+idea:
+  name: test-auth-only
+  title: AuthOnly — App with Supabase Auth but No Supabase Database
+  owner: tester
+  template_repo: acme/experiment-template
+
+  problem: |
+    Users want a simple authenticated app that stores data in a third-party API
+    rather than a traditional database.
+
+  solution: |
+    A lightweight app with Supabase Auth for login but no Supabase database — data
+    is fetched from an external API using the authenticated user's token.
+
+  target_user: Developers building API-first apps with auth
+
+  distribution: |
+    Share in developer communities and forums.
+
+  pages:
+    - name: landing
+      purpose: Explain the app and direct users to sign up
+    - name: signup
+      purpose: Email/password registration form
+    - name: login
+      purpose: Email/password login form
+    - name: dashboard
+      purpose: Show data fetched from external API for the logged-in user
+
+  features:
+    - User authentication via email/password
+    - Dashboard displaying external API data for the authenticated user
+
+  primary_metric: Authenticated users
+  target_value: "20 users sign up in 1 week"
+  measurement_window: 1 week
+
+  stack:
+    framework: nextjs
+    auth: supabase
+    analytics: posthog
+    ui: shadcn
+    hosting: vercel
+
+events:
+  standard_funnel:
+    - event: visit_landing
+      trigger: User loads the landing page
+    - event: signup_start
+      trigger: User opens the registration form
+    - event: signup_complete
+      trigger: User successfully creates an account
+    - event: activate
+      trigger: User views their dashboard for the first time
+    - event: retain_return
+      trigger: User returns after 24+ hours
+  custom_events: []
+
+assertions:
+  payment_events_required: false
+  activate_required: true
+  skippable_events: []
+  min_pages: 4

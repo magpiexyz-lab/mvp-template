@@ -15,6 +15,9 @@ This skill does NOT write code. It helps you decide what action to take, then po
 
 ## Step 1: Read the experiment definition
 
+- Verify `idea/idea.yaml` exists. If not, stop and tell the user: "No experiment found. Create `idea/idea.yaml` from the template first, then run `/bootstrap`."
+- If `package.json` does not exist, stop and tell the user: "No app found. Run `/bootstrap` first to create the app, then run `/iterate` to review its progress."
+- Verify `EVENTS.yaml` exists. If not, stop and tell the user: "EVENTS.yaml not found. This file defines all analytics events and is required. Restore it from your template repo or re-create it following the format in the EVENTS.yaml section of the template."
 - Read `idea/idea.yaml` — understand the hypothesis:
   - What are we building? (`title`, `solution`)
   - For whom? (`target_user`)
@@ -26,7 +29,7 @@ This skill does NOT write code. It helps you decide what action to take, then po
 
 ## Step 2: Ask the user for current data
 
-First, tell the user how to get the numbers. See the analytics stack file's "Dashboard navigation" section for provider-specific instructions on how to pull funnel numbers. If no stack file exists, give general guidance.
+First, tell the user how to get the numbers. See the analytics stack file's "Dashboard navigation" section for provider-specific instructions on how to pull funnel numbers. If no stack file exists or it lacks a "Dashboard Navigation" section, give general guidance.
 
 > **How to get your funnel numbers:**
 > Follow the dashboard instructions in your analytics stack file (`.claude/stacks/analytics/<value>.md`). Create a funnel using the events from EVENTS.yaml `standard_funnel` in the order listed, then append `payment_funnel` events if `stack.payment` is present. Filter by `project_name` equals your idea.yaml `name` value. Present the actual event names to the user so they can find them in their dashboard.
@@ -74,18 +77,18 @@ Focus on the **biggest drop-off** in the funnel. That's where effort has the hig
 Based on the diagnosis, recommend 1-3 specific actions. For each:
 - **What**: concrete description of the change
 - **Why**: how it addresses the bottleneck
-- **Skill to use**: which make command to run
+- **Skill to use**: which /command to run
 - **Expected impact**: what metric should improve
 
 Common patterns:
 
 | Bottleneck | Typical Actions |
 |-----------|----------------|
-| Low visit → signup | `make change DESC="improve landing page copy and CTA"` |
-| Low signup_start → complete | `make change DESC="fix signup errors"` or `make change DESC="reduce signup form friction"` |
-| Low activation | `make change DESC="simplify [first-value action]"` |
-| Low pay conversion | `make change DESC="improve pricing/payment UX"` |
-| Low retention | `make change DESC="add [engagement hook]"` |
+| Low visit → signup | `/change improve landing page copy and CTA` |
+| Low signup_start → complete | `/change fix signup errors` or `/change reduce signup form friction` |
+| Low activation | `/change simplify [first-value action]` |
+| Low pay conversion | `/change improve pricing/payment UX` |
+| Low retention | `/change add [engagement hook]` |
 | Everything low | Reconsider `target_user` or `distribution` — may be a positioning problem, not a product problem |
 
 Present recommendations in priority order (highest impact first).
@@ -96,16 +99,16 @@ If the diagnosis reveals a need to change direction:
 
 ### Minor pivot (keep same target user, adjust features)
 - Propose the changes to the user and list the specific edits to idea.yaml
-- The user should edit idea.yaml manually, then run `make change DESC="..."` or `make bootstrap` to implement
+- The user should edit idea.yaml manually, then run `/change ...` or `/bootstrap` to implement
 
 ### Major pivot (change target user, problem, or solution)
 - Present the case: "The data suggests [current approach] isn't working because [reason]. Consider targeting [new user] or solving [different problem]."
 - Do NOT update idea.yaml for major pivots — the user should think about this and manually edit idea.yaml
-- Remind them: "After updating idea.yaml, run `make bootstrap` on a fresh repo to start a new experiment, or `make change DESC=\"...\"` to iteratively shift the existing one."
+- Remind them: "After updating idea.yaml, run `/bootstrap` on a fresh repo to start a new experiment, or `/change ...` to iteratively shift the existing one."
 
 ### On track (metrics are progressing toward target_value)
 - Say so clearly: "You're on track. [X] of [target_value] achieved with [Y days] remaining."
-- Recommend: keep going, focus on distribution, or run `make change DESC="improve conversion"` to improve conversion
+- Recommend: keep going, focus on distribution, or run `/change improve conversion` to improve conversion
 
 ## Step 6: Summarize next steps
 
@@ -114,8 +117,8 @@ End with a clear, numbered action list:
 ```
 ## Recommended Next Steps
 
-1. Run `make change DESC="sharpen landing page headline to address [specific user pain]"`
-2. Run `make change DESC="add onboarding checklist after signup"`
+1. Run `/change sharpen landing page headline to address [specific user pain]`
+2. Run `/change add onboarding checklist after signup`
 3. Post in [distribution channel from idea.yaml] — drive more top-of-funnel traffic
 
 Your measurement window ends in [X days]. Focus on the activation bottleneck first.
@@ -123,7 +126,7 @@ Your measurement window ends in [X days]. Focus on the activation bottleneck fir
 
 ### Retro reminder
 If the experiment is near the end of its `measurement_window` or the user is considering stopping:
-> Your measurement window ends in [X days]. When you're ready to wrap up, run **`make retro`** to generate a structured retrospective and file it as feedback on the template repo.
+> Your measurement window ends in [X days]. When you're ready to wrap up, run **`/retro`** to generate a structured retrospective and file it as feedback on the template repo.
 
 ## Do NOT
 - Write code or modify source files — this skill is analysis only

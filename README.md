@@ -8,17 +8,17 @@ A template repository for running parallel MVP experiments. Fill in your idea, r
 ## How It Works
 
 ```
-1. Fill in idea.yaml  →  make bootstrap  →  Review & merge PR  →  Deploy
-                                                                     ↓
-                                                              Share with users
-                                                                     ↓
-4. Act on recommendations ← 3. make iterate ← 2. Check analytics dashboards
-   (make change DESC="...")   (analysis only — no PR)
+1. Fill in idea.yaml  →  /bootstrap  →  Review & merge PR  →  Deploy
+                                                                  ↓
+                                                           Share with users
+                                                                  ↓
+4. Act on recommendations  ←  3. /iterate  ←  2. Check analytics dashboards
+   (/change ...)               (analysis only — no PR)
            ↓
    Review & merge PR  →  Deploy  →  Repeat
 ```
 
-Every command except `make iterate` and `make retro` creates a branch, launches Claude Code to do the work, and opens a PR for you to review and merge. `make iterate` and `make retro` are analysis-only — they don't create branches or PRs.
+Every skill except `/iterate` and `/retro` creates a branch, does the work, and opens a PR for you to review and merge. `/iterate` and `/retro` are analysis-only — they don't create branches or PRs. AI skills are invoked directly in Claude Code (not through `make`).
 
 **Plan-Approve-Execute**: Every code-writing skill follows a three-phase workflow. First, Claude reads your idea.yaml and presents a plain-language plan. Then it **stops and waits** for your approval. Only after you say "approve" does it write any code. This keeps you in control — you can adjust the plan before any files are changed.
 
@@ -63,10 +63,9 @@ The key fields:
 ```bash
 git add idea/idea.yaml && git commit -m "Fill in idea.yaml"
 make validate    # Check for any unfilled TODOs
-make bootstrap   # Generate the full MVP
 ```
 
-Claude Code will:
+Then open Claude Code and run `/bootstrap` to generate the full MVP. Claude will:
 1. Read your idea.yaml and present a build plan
 2. Wait for your approval
 3. Generate the full MVP (pages, auth, analytics, API routes)
@@ -103,21 +102,26 @@ Open [http://localhost:3000](http://localhost:3000) to see your app.
 
 ## Commands
 
-Run `make` to see all available commands:
+Run `make` to see all available utility commands:
 
 | Command | What it does |
 |---------|-------------|
 | `make validate` | Check idea.yaml for valid YAML, TODOs, name format, and landing page |
-| `make bootstrap` | Generate the full MVP from `idea/idea.yaml` |
-| `make change DESC="..."` | Make any change: add feature, fix bug, polish UI, fix analytics, add tests |
-| `make iterate` | Review metrics and get recommendations for next steps |
-| `make retro` | Run a retrospective and file feedback as GitHub issue |
 | `make test-e2e` | Run Playwright E2E tests |
 | `make dev` | Start the local development server |
 | `make test` | Run tests |
 | `make deploy` | Deploy to Vercel |
 | `make clean` | Remove generated files (lets you re-run bootstrap) |
 | `make clean-all` | Remove everything including migrations (full reset) |
+
+AI skills are invoked directly in Claude Code:
+
+| Skill | What it does |
+|-------|-------------|
+| `/bootstrap` | Generate the full MVP from `idea/idea.yaml` |
+| `/change ...` | Make any change: add feature, fix bug, polish UI, fix analytics, add tests |
+| `/iterate` | Review metrics and get recommendations for next steps |
+| `/retro` | Run a retrospective and file feedback as GitHub issue |
 
 ## Workflow
 
@@ -127,18 +131,18 @@ After bootstrap, the typical workflow is:
 
 1. **Deploy and share** — `make deploy`, send to target users
 2. **Collect data** — wait a few days, check your analytics dashboards
-3. **Review progress** — `make iterate` to analyze your funnel and get recommendations (this is analysis-only — it does not create a branch or PR)
-4. **Act on recommendations** — run the suggested command:
-   - `make change DESC="..."` to add a feature, fix a bug, polish UI, fix analytics, or add tests
-5. **Review and merge PRs** — each command opens a PR for you to review
+3. **Review progress** — `/iterate` to analyze your funnel and get recommendations (this is analysis-only — it does not create a branch or PR)
+4. **Act on recommendations** — run the suggested skill:
+   - `/change ...` to add a feature, fix a bug, polish UI, fix analytics, or add tests
+5. **Review and merge PRs** — each skill opens a PR for you to review
 6. **Repeat** — deploy, measure, iterate until you hit `target_value` or `measurement_window` ends
-7. **Retrospective** — when the experiment ends, run `make retro` to generate structured feedback and file it on the template repo
+7. **Retrospective** — when the experiment ends, run `/retro` to generate structured feedback and file it on the template repo
 
 ## Retrospectives
 
 At the end of an experiment (or when `measurement_window` ends), run a retrospective:
 
-1. Run: **`make retro`** (or open Claude Code and run `/retro`)
+1. Open Claude Code and run **`/retro`**
 2. Claude gathers git/PR data, asks you 4 questions, and generates a structured summary
 3. Claude files the retro as a GitHub Issue on your template repo
 
@@ -182,16 +186,16 @@ After your first PR is merged, protect the `main` branch:
 **`make validate` fails with "pages must include landing"**
 → Add an entry with `name: landing` to the `pages` list in idea.yaml. Every experiment needs a landing page.
 
-**`make bootstrap` fails with "claude is not installed"**
-→ Install Claude Code: https://claude.ai/code
+**`/bootstrap` fails with "Not a git repository"**
+→ Make sure you're in a cloned repo. Run `git init` or clone your repo first.
 
-**`make bootstrap` fails with "uncommitted changes"**
-→ You need to commit your idea.yaml changes first: `git add idea/idea.yaml && git commit -m "Fill in idea.yaml"`. The bootstrap script requires a clean working tree before creating a feature branch.
+**`/bootstrap` fails with "uncommitted changes"**
+→ You need to commit your idea.yaml changes first: `git add idea/idea.yaml && git commit -m "Fill in idea.yaml"`. The branch setup requires a clean working tree before creating a feature branch.
 
-**`make bootstrap` fails with "GitHub CLI is not authenticated"**
+**`/bootstrap` fails with "GitHub CLI is not authenticated"**
 → Run `gh auth login` and follow the prompts to authenticate.
 
-**`make bootstrap` fails with "No origin remote"**
+**`/bootstrap` fails with "No origin remote"**
 → Your repo needs a remote. Run: `git remote add origin https://github.com/<your-username>/<your-repo-name>.git`
 
 **Build fails after bootstrap**
@@ -210,15 +214,15 @@ After your first PR is merged, protect the `main` branch:
 → Add your environment variables in the Vercel dashboard: Project → Settings → Environment Variables. Add the same keys from `.env.example`.
 
 **Bootstrap partially failed (e.g., npm install worked but shadcn init didn't)**
-→ Run `make clean` to remove generated files, then try `make bootstrap` again.
+→ Run `make clean` to remove generated files, then try `/bootstrap` again.
 
 **Branch already exists**
-→ The script handles this automatically by appending `-2`, `-3`, etc.
+→ The branch setup handles this automatically by appending `-2`, `-3`, etc.
 
 **A skill failed partway through (e.g., build error, network issue)**
 → You have two options:
   1. **Resume:** switch to the branch (`git checkout <branch-name>`) and run `claude` to pick up where it left off.
-  2. **Start fresh:** delete the branch (`git branch -D <branch-name>`) and re-run the `make` command.
+  2. **Start fresh:** delete the branch (`git branch -D <branch-name>`) and re-run the skill.
 
 **Two experiments won't run locally at the same time**
 → Run the second one on a different port: `npm run dev -- -p 3001`
@@ -232,13 +236,11 @@ idea/retro-template.md   # Retrospective template (used at end of experiment)
 CLAUDE.md                # Rules for Claude Code (don't edit unless you know what you're doing)
 EVENTS.yaml              # Analytics event dictionary
 .claude/commands/        # Claude Code skills (bootstrap, change, iterate, retro)
-.claude/failure-patterns.md  # Error patterns learned from build failures (auto-populated)
 .claude/patterns/        # Shared patterns referenced by skills (verification procedure, etc.)
 .claude/stacks/          # Stack implementation files (one per technology — framework, database, auth, testing, etc.)
 .github/                 # PR template and CI workflow
 .gitleaks.toml           # Secret scanning configuration
-scripts/run-skill.sh     # Helper script used by Makefile
-Makefile                 # Command shortcuts — run `make` to see all
+Makefile                 # Utility command shortcuts — run `make` to see all
 .nvmrc                   # Node.js version (20)
 supabase/migrations/     # Database migrations (default database stack) (generated by bootstrap/change, run in Supabase Dashboard)
 src/                     # App code (generated by make bootstrap)
@@ -267,7 +269,6 @@ Most code-writing changes should go through the unified `change` skill rather th
 
 1. Create a command file at `.claude/commands/<skill-name>.md` with the skill's instructions
 2. Add YAML frontmatter at the top of the file with required keys: `type`, `reads`, `stack_categories`, `requires_approval`, `references`, `branch_prefix`, `modifies_specs`. See existing skill files for examples.
-3. Add the skill name to the `ANALYSIS_ONLY_SKILLS` list in `scripts/run-skill.sh` if it should not create a branch
-4. Add a Makefile target following the pattern of existing targets
-5. Update the Commands table in this README
-6. Update the skill list in CLAUDE.md Rule 0 (the `/bootstrap, /change, /iterate, /retro` enumeration)
+3. For code-writing skills: add `.claude/patterns/branch.md` and `.claude/patterns/verify.md` to the `references` list, and add a Step 0 that invokes the branch setup procedure
+4. Update the skill tables in this README
+5. Update the skill list in CLAUDE.md Rule 0 (the `/bootstrap, /change, /iterate, /retro` enumeration)
