@@ -1,4 +1,5 @@
 ---
+description: "Use when you have analytics data and want to decide what to do next. Analysis only — no code changes."
 type: analysis-only
 reads:
   - idea/idea.yaml
