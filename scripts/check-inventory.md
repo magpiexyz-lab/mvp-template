@@ -1,9 +1,9 @@
 # Check Inventory
 
 Scannable reference listing all automated checks by name, grouped by validator.
-51 active checks consolidated into 47 inventory rows.
+52 active checks consolidated into 48 inventory rows.
 
-Last updated: 2026-02-17
+Last updated: 2026-02-16
 
 ## Validation philosophy
 
@@ -63,6 +63,7 @@ better enforced by the scoped LLM review (`scripts/scoped-review-prompt.md`).
 | Verify change skill validates payment dependencies before plan phase | At least one payment dependency stop message must appear before the plan phase marker in change.md |
 | Verify analytics stack files include Dashboard Navigation section | Every `.claude/stacks/analytics/*.md` file must contain a `## Dashboard Navigation` heading (case-insensitive) |
 | Verify change skill revalidates testing assumes for all change types | change.md Step 3 must contain testing assumes validation that is NOT gated by the Test-type classification |
+| Verify analytics stack files include Test Blocking section | Every `.claude/stacks/analytics/*.md` file must contain a `## Test Blocking` heading (case-insensitive) |
 
 ## consistency-check.sh
 

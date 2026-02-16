@@ -33,6 +33,7 @@ Checks:
   29. Change Payment Validation Before Plan Phase — payment dependency checks appear before plan phase
   30. Analytics Dashboard Navigation Section — analytics stack files include Dashboard Navigation
   31. Change Testing Assumes Revalidation — change skill revalidates testing assumes for all change types
+  32. Analytics Test Blocking Section — analytics stack files include Test Blocking
 """
 
 import glob
@@ -1408,6 +1409,22 @@ if os.path.isfile(change_path_31):
         error(
             f"[31] {change_path_31}: could not find Step 3 section "
             f"to check testing assumes revalidation"
+        )
+
+# ---------------------------------------------------------------------------
+# Check 32: Analytics Stack Files Include Test Blocking Section
+# ---------------------------------------------------------------------------
+
+for sf in analytics_stack_files:
+    content = stack_contents[sf]
+    has_test_blocking = bool(
+        re.search(r"(?i)^## Test Blocking", content, re.MULTILINE)
+    )
+    if not has_test_blocking:
+        error(
+            f"[32] {sf}: analytics stack file missing required "
+            f"'## Test Blocking' section (needed by testing stack's "
+            f"blockAnalytics helper)"
         )
 
 # ---------------------------------------------------------------------------
