@@ -30,6 +30,18 @@ standard_funnel:
         type: string
         required: false
         description: UTM source parameter from URL if present
+      utm_medium:
+        type: string
+        required: false
+        description: UTM medium parameter from URL if present
+      utm_campaign:
+        type: string
+        required: false
+        description: UTM campaign parameter from URL if present
+      gclid:
+        type: string
+        required: false
+        description: Google Click ID from URL if present (for offline conversion matching)
 
   - event: signup_start
     trigger: User clicks "Sign up" or opens the registration form
@@ -111,5 +123,5 @@ payment_funnel:
 #         required: true
 #         description: Number of line items on the invoice
 
-# Start with an empty list. The /change skill will add events here.
+# Start with an empty list. The /change and /distribute skills will add events here.
 custom_events: []

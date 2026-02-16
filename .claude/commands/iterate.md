@@ -4,6 +4,7 @@ type: analysis-only
 reads:
   - idea/idea.yaml
   - EVENTS.yaml
+  - idea/ads.yaml
 stack_categories: [analytics]
 requires_approval: false
 references: []
@@ -49,6 +50,14 @@ Then ask the user to provide whatever they have. Not all of these will be availa
 
 5. **Observations** — anything the team has noticed (e.g., "users sign up but never create an invoice", "landing page bounce rate is high")
 
+6. **Ads data (if /distribute has been run)** — if `idea/ads.yaml` exists:
+   - Total spend so far
+   - Clicks and CTR
+   - Cost per click (CPC)
+   - Conversions attributed to ads (`activate` events with utm_source=google)
+
+   How to get ads data: Google Ads dashboard -> Campaigns -> select the campaign -> check Clicks, CTR, Avg CPC, Cost. For conversions: filter events in the analytics dashboard by `utm_source = "google"`.
+
 ## Step 3: Diagnose the funnel
 
 Analyze the data to find where the funnel breaks. Present a funnel visualization:
@@ -75,6 +84,23 @@ Users sign up but don't [complete the core action].
 
 Focus on the **biggest drop-off** in the funnel. That's where effort has the highest leverage.
 
+### Ads Performance (if ads.yaml exists)
+
+If `idea/ads.yaml` exists and the user provided ads data in Step 2, include this table:
+
+```
+## Ads Performance
+
+| Metric | Actual | Threshold | Status |
+|--------|--------|-----------|--------|
+| CTR | [%] | >1% | [status] |
+| CPC | [$] | <$[max_cpc from ads.yaml guardrails.max_cpc_cents / 100] | [status] |
+| Spend | [$] | /$[total_budget from ads.yaml budget.total_budget_cents / 100] | [status] |
+| Paid activations | [N] | >=[thresholds.expected_activations from ads.yaml] | [status] |
+```
+
+Read `idea/ads.yaml` to populate threshold values. Use the user-provided ads data for actual values.
+
 ## Step 4: Recommend actions
 
 Based on the diagnosis, recommend 1-3 specific actions. For each:
@@ -95,6 +121,23 @@ Common patterns:
 | Everything low | Reconsider `target_user` or `distribution` — may be a positioning problem, not a product problem |
 
 Present recommendations in priority order (highest impact first).
+
+### Ads Decision (if ads.yaml exists and day 7 or budget exhausted)
+
+If `idea/ads.yaml` exists but the user reported no ads data in Step 2 (campaign not yet launched), skip this section and instead note: "Ads config generated but campaign not yet launched. Create the campaign in Google Ads using `idea/ads.yaml`, then return to `/iterate` after a few days of data."
+
+If `idea/ads.yaml` exists and the campaign has been running for the full `budget.duration_days` or `budget.total_budget_cents` is exhausted, present a go/no-go decision:
+
+| Signal | Interpretation | Action |
+|--------|---------------|--------|
+| 3+ paid activations | Demand validated | Continue: increase budget or `/change` to improve conversion |
+| 1-2 paid activations | Weak signal | Extend 3 days or improve landing page, then re-evaluate |
+| 0 activations, >10 signups | Activation problem | `/change` to reduce activation friction |
+| 0 activations, >50 clicks, <3 signups | Landing page problem | `/change` to improve landing page |
+| 0 activations, <50 clicks, <1% CTR | Targeting problem | Revise keywords in ads.yaml, re-run `/distribute` |
+| 0 activations, <50 clicks, >1% CTR | Budget/time problem | Extend budget or measurement window |
+
+Read `thresholds.go_signal` and `thresholds.no_go_signal` from `idea/ads.yaml` and use them as the primary decision criteria. The table above provides additional diagnostic detail.
 
 ## Step 5: Update the experiment plan (if needed)
 
@@ -134,7 +177,7 @@ If the experiment is near the end of its `measurement_window` or the user is con
 ## Do NOT
 - Write code or modify source files — this skill is analysis only
 - Recommend more than 3 actions — focus is more valuable than breadth
-- Recommend actions outside the defined commands (bootstrap, change, iterate, retro)
+- Recommend actions outside the defined commands (bootstrap, change, iterate, retro, distribute)
 - Be vague — every recommendation must be specific enough to act on
 - Ignore the data — don't recommend features if the funnel shows a landing page problem
 - Recommend adding features when the real problem is distribution or positioning

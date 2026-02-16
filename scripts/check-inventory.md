@@ -1,7 +1,7 @@
 # Check Inventory
 
 Scannable reference listing all automated checks by name, grouped by validator.
-57 active checks consolidated into 53 inventory rows.
+62 active checks consolidated into 58 inventory rows.
 
 Last updated: 2026-02-16
 
@@ -64,15 +64,19 @@ better enforced by the scoped LLM review (`scripts/scoped-review-prompt.md`).
 | Verify analytics stack files include Dashboard Navigation section | Every `.claude/stacks/analytics/*.md` file must contain a `## Dashboard Navigation` heading (case-insensitive) |
 | Verify change skill revalidates testing assumes for all change types | change.md preconditions step must contain testing assumes validation that is NOT gated by the Test-type classification |
 | Verify analytics stack files include Test Blocking section | Every `.claude/stacks/analytics/*.md` file must contain a `## Test Blocking` heading (case-insensitive) |
-| Verify skill prose event names exist in EVENTS.yaml | Backtick-wrapped snake_case tokens in skill prose appearing near event/fire context must exist in EVENTS.yaml or reference "from/in EVENTS.yaml" within 100 chars |
+| Verify skill prose event names exist in EVENTS.yaml | Backtick-wrapped snake_case tokens in skill prose appearing near event/fire context must exist in EVENTS.yaml, be defined in a YAML code block within the same skill, or reference "from/in EVENTS.yaml" within 100 chars |
 | Verify stack files with fallback sections annotate conditional files in frontmatter | Stack files with fallback sections listing assumes-dependent files in `files` frontmatter must include a `# conditional` annotation |
 | Verify no-auth CI template includes commented database placeholder env vars | If the full-auth CI Job Template in the testing stack includes database-related env var names, the No-Auth CI Job Template must also contain them (commented or uncommented) |
 | Verify Makefile validate warns about bootstrap-excluded stack categories | Makefile `validate` target must check for `testing` in idea.yaml `stack` and warn that bootstrap rejects it |
 | Verify change skill classification precedes classification-dependent checks | In change.md, the step heading containing "Classify" must appear before any step heading whose body contains "classified as" or "is a Fix" or "is NOT Test" |
+| Verify ads.yaml schema | If `idea/ads.yaml` exists: required keys present, budget within limits, minimum keyword counts, ad copy meets RSA constraints, guardrails.max_cpc_cents is int > 0, thresholds.expected_activations is int >= 0, thresholds.go_signal and thresholds.no_go_signal are non-empty strings |
+| Verify ads.yaml campaign_name matches idea.yaml name | `campaign_name` in ads.yaml must start with idea.yaml `name` |
+| Verify distribute skill prose event names | distribute.md must contain a YAML code block defining the `feedback_submitted` event (added to EVENTS.yaml `custom_events` during Step 7c) |
+| Verify distribute skill docs reference exists | If distribute.md contains a backtick-wrapped reference to `docs/google-ads-setup.md`, that file must exist on disk |
 
 ## consistency-check.sh
 
-9 active checks consolidated into 5 rows. Three checks removed (scripts #8, #11, #12).
+10 active checks consolidated into 6 rows. Three checks removed (scripts #8, #11, #12).
 
 | Name | Description | Scripts |
 |------|-------------|---------|
@@ -81,6 +85,7 @@ better enforced by the scoped LLM review (`scripts/scoped-review-prompt.md`).
 | Forbid framework-specific terms in rules and skills | CLAUDE.md and skill files must not use framework-specific directives or terms | #4, #5 |
 | Forbid hardcoded framework paths in change skill | change.md must not hardcode API or types paths | #7 |
 | Require verify.md references in code-writing skill content | Code-writing skill content (not just frontmatter) must reference verify.md | #10 |
+| Forbid hardcoded analytics provider names in skill section headings | Skill files (`.claude/commands/*.md`) must not contain `PostHog` (case-insensitive) in `###` section headings — provider names belong in the analytics stack file | #13 |
 
 ## Cross-validator overlaps
 

@@ -165,6 +165,7 @@ Re-read `idea/idea.yaml` now. Verify each of these before proceeding to the PR:
 - For each page in `pages`: confirm `src/app/<page-name>/page.tsx` exists (or root page for `landing`)
 - For each feature in `features`: confirm the implementation addresses it
 - For each standard_funnel event in `EVENTS.yaml`: confirm a tracking call exists in the appropriate page
+- If `stack.payment` is present: confirm the webhook handler does not contain `// TODO: Update user's payment status` (this compiles silently — verify it was resolved in Step 5/6)
 - If anything is missing, implement it now. Do not proceed with gaps.
 
 ### Step 9: Commit, push, open PR

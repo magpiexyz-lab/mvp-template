@@ -97,6 +97,19 @@ done
 
 # 11. (removed)
 
+# 12. (removed)
+
+# 13. Hardcoded analytics provider names in skill section headings
+for f in .claude/commands/*.md; do
+  [ -f "$f" ] || continue
+  if grep -qiE '^###.*PostHog' "$f"; then
+    echo "FAIL: $f — hardcoded analytics provider name in section heading (should be provider-agnostic)"
+    grep -niE '^###.*PostHog' "$f" | head -5
+    echo ""
+    ERRORS=$((ERRORS + 1))
+  fi
+done
+
 echo ""
 if [ "$ERRORS" -gt 0 ]; then
   echo "FAILED: $ERRORS violation(s). Move facts to canonical sources (EVENTS.yaml, stack files)."
