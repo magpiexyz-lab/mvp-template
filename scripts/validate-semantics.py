@@ -34,6 +34,11 @@ Checks:
   30. Analytics Dashboard Navigation Section — analytics stack files include Dashboard Navigation
   31. Change Testing Assumes Revalidation — change skill revalidates testing assumes for all change types
   32. Analytics Test Blocking Section — analytics stack files include Test Blocking
+  33. Skill Prose Phantom Event Names — backtick-wrapped event names in skill prose exist in EVENTS.yaml
+  34. Stack Files Conditional Files Frontmatter — fallback stacks annotate conditional files in frontmatter
+  35. No-Auth CI Template Database Env Vars — no-auth CI template includes database placeholder env vars if full-auth template does
+  36. Makefile Validate Testing Warning — Makefile validate target warns about bootstrap-excluded stack categories
+  37. Change Classification Before Dependent Checks — classification step precedes classification-dependent checks
 """
 
 import glob
@@ -1381,14 +1386,14 @@ if os.path.isfile(change_path_31):
     with open(change_path_31) as f:
         change_content_31 = f.read()
 
-    # Find Step 3 (preconditions) section
-    step3_match = re.search(
-        r"## Step 3:.*?\n(.*?)(?=\n## Step \d|\n## Phase|\Z)",
+    # Find preconditions section (by content, not step number)
+    preconditions_match = re.search(
+        r"## Step \d+:.*?[Cc]heck preconditions.*?\n(.*?)(?=\n## Step \d|\n## Phase|\Z)",
         change_content_31,
         re.DOTALL,
     )
-    if step3_match:
-        step3_text = step3_match.group(1)
+    if preconditions_match:
+        preconditions_text = preconditions_match.group(1)
 
         # Look for testing assumes validation NOT gated by Test-type classification
         # There should be a check that runs when type is NOT Test
@@ -1396,18 +1401,18 @@ if os.path.isfile(change_path_31):
             re.search(
                 r"(?i)(?:NOT\s+Test|type\s+is\s+NOT\s+Test).*testing.*assumes|"
                 r"testing.*assumes.*(?:NOT\s+Test|type\s+is\s+NOT\s+Test)",
-                step3_text,
+                preconditions_text,
                 re.DOTALL,
             )
         )
         if not has_non_test_assumes_check:
             error(
-                f"[31] {change_path_31}: Step 3 preconditions do not "
+                f"[31] {change_path_31}: preconditions step does not "
                 f"revalidate testing assumes for non-Test change types"
             )
     else:
         error(
-            f"[31] {change_path_31}: could not find Step 3 section "
+            f"[31] {change_path_31}: could not find preconditions step "
             f"to check testing assumes revalidation"
         )
 
@@ -1426,6 +1431,230 @@ for sf in analytics_stack_files:
             f"'## Test Blocking' section (needed by testing stack's "
             f"blockAnalytics helper)"
         )
+
+# ---------------------------------------------------------------------------
+# Check 33: Skill Prose Phantom Event Names
+# ---------------------------------------------------------------------------
+
+# Backtick-wrapped snake_case tokens in skill prose appearing near "event" or
+# "fire" must either exist in EVENTS.yaml or be preceded by "from EVENTS.yaml"
+# / "in EVENTS.yaml" within 100 characters.
+
+events_yaml_path = "EVENTS.yaml"
+if os.path.isfile(events_yaml_path):
+    with open(events_yaml_path) as f:
+        events_data = yaml.safe_load(f) or {}
+
+    # Collect all defined event names from EVENTS.yaml
+    defined_events: set[str] = set()
+    for section in ["standard_funnel", "payment_funnel", "custom_events"]:
+        for ev in events_data.get(section, []) or []:
+            if isinstance(ev, dict) and "event" in ev:
+                defined_events.add(ev["event"])
+
+    # Also collect global property names (not events, but avoid false positives)
+    global_props = set((events_data.get("global_properties", {}) or {}).keys())
+
+    for sf, content in skill_contents.items():
+        prose = extract_prose(content)
+        # Find backtick-wrapped snake_case tokens near event/fire context
+        for m in re.finditer(r"`([a-z][a-z0-9_]+)`", prose):
+            token = m.group(1)
+            # Only check if it looks like an event name (snake_case, not a file path)
+            if "/" in token or "." in token:
+                continue
+            # Check if it's near event-related context (within 100 chars)
+            start = max(0, m.start() - 100)
+            end = min(len(prose), m.end() + 100)
+            context = prose[start:end].lower()
+            if not re.search(r"\bevent\b|\bfire\b", context):
+                continue
+            # Skip known event names
+            if token in defined_events:
+                continue
+            # Skip global property names
+            if token in global_props:
+                continue
+            # Skip if preceded by "from EVENTS.yaml" or "in EVENTS.yaml" within 100 chars
+            context_before = prose[start:m.start()].lower()
+            if re.search(r"(?:from|in)\s+events\.yaml", context_before):
+                continue
+            # Skip generic references like "EVENTS.yaml event(s)" or "its events"
+            if re.search(r"events\.yaml", context.lower()):
+                continue
+            # Skip known non-event tokens (stack categories, types, idea.yaml fields, etc.)
+            skip_tokens = {
+                "stack", "testing", "payment", "analytics", "database",
+                "auth", "posthog", "supabase", "stripe", "nextjs",
+                "custom_events", "standard_funnel", "payment_funnel",
+                "object_action", "track", "event_name",
+                "name", "title", "owner", "problem", "solution",
+                "target_user", "distribution", "primary_metric",
+                "target_value", "measurement_window",
+                "page_name", "feature", "features", "pages",
+            }
+            if token in skip_tokens:
+                continue
+            pos = content.find(f"`{token}`")
+            line_num = content[:pos].count("\n") + 1 if pos >= 0 else "?"
+            error(
+                f"[33] {sf}:{line_num}: prose references event name "
+                f"'{token}' near event/fire context, but it is not "
+                f"defined in EVENTS.yaml"
+            )
+
+# ---------------------------------------------------------------------------
+# Check 34: Stack Files with Fallback Sections Annotate Conditional Files
+# ---------------------------------------------------------------------------
+
+for sf, content in stack_contents.items():
+    fm = parse_frontmatter(sf)
+    if not fm:
+        continue
+
+    # Check if this stack file has a fallback section
+    has_fallback = bool(
+        re.search(r"(?i)## No-Auth Fallback|## .*Fallback", content)
+    )
+    if not has_fallback:
+        continue
+
+    fm_files = fm.get("files", []) or []
+    if not fm_files:
+        continue
+
+    # Get the files line from frontmatter to check for # conditional comment
+    fm_match = re.match(r"^---\n(.*?\n)---", content, re.DOTALL)
+    if not fm_match:
+        continue
+    fm_text = fm_match.group(1)
+    files_line_match = re.search(r"^files:.*$", fm_text, re.MULTILINE)
+    if not files_line_match:
+        continue
+    files_line = files_line_match.group(0)
+
+    # Find code block headers that only appear outside the fallback section
+    fallback_start = re.search(r"(?i)## No-Auth Fallback|## .*Fallback", content)
+    if not fallback_start:
+        continue
+
+    # Get headers before fallback
+    pre_fallback = content[:fallback_start.start()]
+    post_fallback = content[fallback_start.start():]
+
+    pre_headers = set(re.findall(r"###\s+`([^`]+)`", pre_fallback))
+    post_headers = set(re.findall(r"###\s+`([^`]+)`", post_fallback))
+
+    # Files whose headers only appear in pre-fallback (full template only)
+    full_only_headers = pre_headers - post_headers
+
+    # Check if any frontmatter files match full-only headers
+    assumes_dependent_files = [f for f in fm_files if f in full_only_headers]
+
+    if assumes_dependent_files and "# conditional" not in files_line:
+        error(
+            f"[34] {sf}: files frontmatter lists assumes-dependent files "
+            f"{assumes_dependent_files} but lacks '# conditional' annotation"
+        )
+
+# ---------------------------------------------------------------------------
+# Check 35: No-Auth CI Template Includes Commented Database Placeholder Env Vars
+# ---------------------------------------------------------------------------
+
+for sf, content in stack_contents.items():
+    if "/testing/" not in sf:
+        continue
+
+    # Find the full-auth CI Job Template
+    full_ci_match = re.search(
+        r"## CI Job Template\s*\n(.*?)(?=\n## |\Z)",
+        content,
+        re.DOTALL,
+    )
+    if not full_ci_match:
+        continue
+
+    # Find the No-Auth CI Job Template
+    noauth_ci_match = re.search(
+        r"### No-Auth CI Job Template\s*\n(.*?)(?=\n### |\n## |\Z)",
+        content,
+        re.DOTALL,
+    )
+    if not noauth_ci_match:
+        continue
+
+    full_ci_text = full_ci_match.group(1)
+    noauth_ci_text = noauth_ci_match.group(1)
+
+    # Check for database-related env var names (SUPABASE from database/supabase)
+    # in the full-auth template
+    db_env_vars = re.findall(
+        r"(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY)",
+        full_ci_text,
+    )
+
+    if db_env_vars:
+        for var in set(db_env_vars):
+            if var not in noauth_ci_text:
+                error(
+                    f"[35] {sf}: No-Auth CI Job Template missing database "
+                    f"env var '{var}' which is present in full-auth CI "
+                    f"Job Template (should be commented or uncommented)"
+                )
+
+# ---------------------------------------------------------------------------
+# Check 36: Makefile Validate Warns About Bootstrap-Excluded Stack Categories
+# ---------------------------------------------------------------------------
+
+if os.path.isfile(makefile_path):
+    validate_recipe_36 = targets.get("validate", "")
+
+    has_testing_check = bool(
+        re.search(r"testing", validate_recipe_36)
+    )
+    if not has_testing_check:
+        error(
+            f"[36] Makefile: validate target does not check for 'testing' "
+            f"in idea.yaml stack (bootstrap rejects it — validate should warn)"
+        )
+
+# ---------------------------------------------------------------------------
+# Check 37: Change Skill Classification Precedes Classification-Dependent Checks
+# ---------------------------------------------------------------------------
+
+change_path_37 = ".claude/commands/change.md"
+if os.path.isfile(change_path_37):
+    with open(change_path_37) as f:
+        change_content_37 = f.read()
+
+    # Find the step heading containing "Classify"
+    classify_match = re.search(
+        r"^## Step (\d+):.*(?:Classify|classify)",
+        change_content_37,
+        re.MULTILINE,
+    )
+
+    # Find step headings whose body contains "classified as" or "is a Fix"
+    step_pattern = re.compile(
+        r"^## Step (\d+):.*\n(.*?)(?=^## Step \d|\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    classification_dependent_steps: list[tuple[int, str]] = []
+    for m in step_pattern.finditer(change_content_37):
+        step_num = int(m.group(1))
+        body = m.group(2)
+        if re.search(r"classified as|is classified as|is a Fix|is NOT Test", body):
+            classification_dependent_steps.append((step_num, body[:50]))
+
+    if classify_match and classification_dependent_steps:
+        classify_step = int(classify_match.group(1))
+        for dep_step, _ in classification_dependent_steps:
+            if dep_step < classify_step:
+                error(
+                    f"[37] {change_path_37}: Step {dep_step} uses "
+                    f"classification-dependent language but appears before "
+                    f"the classification step (Step {classify_step})"
+                )
 
 # ---------------------------------------------------------------------------
 # Summary

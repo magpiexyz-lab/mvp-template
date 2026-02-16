@@ -102,12 +102,12 @@ If the diagnosis reveals a need to change direction:
 
 ### Minor pivot (keep same target user, adjust features)
 - Propose the changes to the user and list the specific edits to idea.yaml
-- The user should edit idea.yaml manually, then run `/change ...` or `/bootstrap` to implement
+- The user should edit idea.yaml manually, then run `/change ...` to implement the changes (or `make clean` followed by `/bootstrap` to rebuild from scratch)
 
 ### Major pivot (change target user, problem, or solution)
 - Present the case: "The data suggests [current approach] isn't working because [reason]. Consider targeting [new user] or solving [different problem]."
 - Do NOT update idea.yaml for major pivots — the user should think about this and manually edit idea.yaml
-- Remind them: "After updating idea.yaml, run `/bootstrap` on a fresh repo to start a new experiment, or `/change ...` to iteratively shift the existing one."
+- Remind them: "After updating idea.yaml, run `make clean` then `/bootstrap` to start a new experiment (or in a fresh repo), or `/change ...` to iteratively shift the existing one."
 
 ### On track (metrics are progressing toward target_value)
 - Say so clearly: "You're on track. [X] of [target_value] achieved with [Y days] remaining."

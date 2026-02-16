@@ -3,7 +3,7 @@ assumes: [database/supabase, auth/supabase, analytics/posthog]
 packages:
   runtime: []
   dev: ["@playwright/test"]
-files:
+files:  # conditional: global-setup.ts and global-teardown.ts only when all assumes are met
   - playwright.config.ts
   - e2e/global-setup.ts
   - e2e/global-teardown.ts
@@ -180,6 +180,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # Required for test user lifecy
 E2E_BASE_URL=http://localhost:3000               # Optional, defaults to localhost:3000
 ```
 
+**When using the No-Auth Fallback:** the auth-specific service role key is not needed. Only the base URL (optional, defaults to localhost:3000) applies.
+
 ## .gitignore Additions
 ```
 # Playwright (update if you change stack.testing)
@@ -326,6 +328,9 @@ When using the No-Auth Fallback path, use this CI template instead of the full-a
       NEXT_PUBLIC_POSTHOG_KEY: phc_placeholder
       NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
       # Analytics env vars above are PostHog-specific — adapt if stack.analytics is different
+      # Database stack (if stack.database is supabase):
+      # NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      # NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
       # Payment stack (if stack.payment is present in idea.yaml):
       # STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
       # NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.E2E_STRIPE_PUBLISHABLE_KEY }}
@@ -373,3 +378,5 @@ When using the No-Auth Fallback path, use this CI template instead of the full-a
   - `E2E_SUPABASE_SERVICE_ROLE_KEY` — your Supabase service role key
 - If `stack.payment` is present: also add Stripe CI secrets (`E2E_STRIPE_SECRET_KEY`, `E2E_STRIPE_PUBLISHABLE_KEY`, `E2E_STRIPE_WEBHOOK_SECRET`)
 - CI E2E job runs only when `playwright.config.ts` exists and secrets are configured — zero friction for repos without E2E
+
+**When using the No-Auth Fallback path:** CI secrets are not required — tests run unconditionally. Just run `npm run test:e2e` locally to verify.
