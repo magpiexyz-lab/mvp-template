@@ -41,11 +41,13 @@ Then ask the user to provide whatever they have. Not all of these will be availa
 
 1. **Funnel numbers** — for each event in EVENTS.yaml `standard_funnel` (and `payment_funnel` if `stack.payment` is present), how many users? Present the actual event names from EVENTS.yaml so the user knows what to look for in their dashboard.
 
-2. **Timeline** — how far into the `measurement_window` are we?
+2. **Custom event numbers** — if EVENTS.yaml `custom_events` is non-empty, also ask for counts of each custom event. Include these in the Step 3 diagnosis as supplementary data below the standard funnel table.
 
-3. **Qualitative feedback** — any user quotes, complaints, feature requests, support messages?
+3. **Timeline** — how far into the `measurement_window` are we?
 
-4. **Observations** — anything the team has noticed (e.g., "users sign up but never create an invoice", "landing page bounce rate is high")
+4. **Qualitative feedback** — any user quotes, complaints, feature requests, support messages?
+
+5. **Observations** — anything the team has noticed (e.g., "users sign up but never create an invoice", "landing page bounce rate is high")
 
 ## Step 3: Diagnose the funnel
 
