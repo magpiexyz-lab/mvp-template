@@ -31,6 +31,8 @@ Checks:
   27. Auth Template Post-Auth Redirects — auth page templates contain router.push/redirect after auth success
   28. Change Assumes Validation Matches Bootstrap — change skill value-matches assumes, not just category-exists
   29. Change Payment Validation Before Plan Phase — payment dependency checks appear before plan phase
+  30. Analytics Dashboard Navigation Section — analytics stack files include Dashboard Navigation
+  31. Change Testing Assumes Revalidation — change skill revalidates testing assumes for all change types
 """
 
 import glob
@@ -1367,6 +1369,45 @@ for sf in analytics_stack_files:
         error(
             f"[30] {sf}: analytics stack file missing required "
             f"'## Dashboard Navigation' section (needed by /iterate skill)"
+        )
+
+# ---------------------------------------------------------------------------
+# Check 31: Change Skill Revalidates Testing Assumes for All Change Types
+# ---------------------------------------------------------------------------
+
+change_path_31 = ".claude/commands/change.md"
+if os.path.isfile(change_path_31):
+    with open(change_path_31) as f:
+        change_content_31 = f.read()
+
+    # Find Step 3 (preconditions) section
+    step3_match = re.search(
+        r"## Step 3:.*?\n(.*?)(?=\n## Step \d|\n## Phase|\Z)",
+        change_content_31,
+        re.DOTALL,
+    )
+    if step3_match:
+        step3_text = step3_match.group(1)
+
+        # Look for testing assumes validation NOT gated by Test-type classification
+        # There should be a check that runs when type is NOT Test
+        has_non_test_assumes_check = bool(
+            re.search(
+                r"(?i)(?:NOT\s+Test|type\s+is\s+NOT\s+Test).*testing.*assumes|"
+                r"testing.*assumes.*(?:NOT\s+Test|type\s+is\s+NOT\s+Test)",
+                step3_text,
+                re.DOTALL,
+            )
+        )
+        if not has_non_test_assumes_check:
+            error(
+                f"[31] {change_path_31}: Step 3 preconditions do not "
+                f"revalidate testing assumes for non-Test change types"
+            )
+    else:
+        error(
+            f"[31] {change_path_31}: could not find Step 3 section "
+            f"to check testing assumes revalidation"
         )
 
 # ---------------------------------------------------------------------------
