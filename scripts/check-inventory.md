@@ -3,7 +3,7 @@
 Scannable reference listing all automated checks by name, grouped by validator.
 51 active checks consolidated into 47 inventory rows.
 
-Last updated: 2026-02-16
+Last updated: 2026-02-17
 
 ## Validation philosophy
 
