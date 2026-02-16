@@ -22,7 +22,7 @@ Follow the branch setup procedure in `.claude/patterns/branch.md`. Use branch pr
 ## Step 1: Validate input
 
 - If `$ARGUMENTS` is empty or unclear: stop and ask the user to describe what they want to change
-- If `$ARGUMENTS` contains `#<number>` or is just a number: read the GitHub issue via `gh issue view <number>` and use its content as the change description
+- If `$ARGUMENTS` contains `#<number>` or is just a number: read the GitHub issue via `gh issue view <number>` and use its content as the change description. If `gh issue view` fails (issue not found, permission denied, or network error), tell the user: "Could not read issue #<number>. Describe the change directly, or check `gh auth status` and retry."
 
 ## Step 2: Read context
 
