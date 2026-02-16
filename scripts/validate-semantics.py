@@ -39,6 +39,10 @@ Checks:
   35. No-Auth CI Template Database Env Vars — no-auth CI template includes database placeholder env vars if full-auth template does
   36. Makefile Validate Testing Warning — Makefile validate target warns about bootstrap-excluded stack categories
   37. Change Classification Before Dependent Checks — classification step precedes classification-dependent checks
+  38. Ads.yaml Schema Validation — required keys, keyword counts, ad copy RSA constraints, budget limits
+  39. Ads.yaml Campaign Name Matches idea.yaml Name — campaign_name starts with idea.name
+  40. Distribute Skill Prose Event Names — distribute.md contains feedback_submitted event definition
+  41. Distribute Skill Docs Reference Exists — docs/google-ads-setup.md exists if distribute.md references it
 """
 
 import glob
@@ -1455,8 +1459,49 @@ if os.path.isfile(events_yaml_path):
     # Also collect global property names (not events, but avoid false positives)
     global_props = set((events_data.get("global_properties", {}) or {}).keys())
 
+    # Collect event-level property names (not events, but avoid false positives)
+    event_props: set[str] = set()
+    for section in ["standard_funnel", "payment_funnel", "custom_events"]:
+        for ev in events_data.get(section, []) or []:
+            if isinstance(ev, dict):
+                for prop_name in (ev.get("properties", {}) or {}).keys():
+                    event_props.add(prop_name)
+
     for sf, content in skill_contents.items():
         prose = extract_prose(content)
+
+        # Collect event names and property names defined in YAML code blocks
+        # within this skill (events the skill adds to EVENTS.yaml at runtime)
+        skill_defined_events: set[str] = set()
+        skill_defined_props: set[str] = set()
+        for yblock in extract_code_blocks(content, {"yaml"}):
+            try:
+                ydata = yaml.safe_load(yblock["code"])
+            except yaml.YAMLError:
+                continue
+            # Collect event dicts from various structures:
+            # - top-level list: [{event: ...}, ...]
+            # - top-level dict with event key: {event: ..., properties: ...}
+            # - nested under custom_events/standard_funnel/payment_funnel
+            event_items: list[dict] = []
+            if isinstance(ydata, list):
+                event_items = [item for item in ydata if isinstance(item, dict)]
+            elif isinstance(ydata, dict):
+                if "event" in ydata:
+                    event_items = [ydata]
+                else:
+                    for section_key in ["custom_events", "standard_funnel", "payment_funnel"]:
+                        section_list = ydata.get(section_key, [])
+                        if isinstance(section_list, list):
+                            event_items.extend(
+                                item for item in section_list if isinstance(item, dict)
+                            )
+            for item in event_items:
+                if "event" in item:
+                    skill_defined_events.add(item["event"])
+                    for prop_name in (item.get("properties", {}) or {}).keys():
+                        skill_defined_props.add(prop_name)
+
         # Find backtick-wrapped snake_case tokens near event/fire context
         for m in re.finditer(r"`([a-z][a-z0-9_]+)`", prose):
             token = m.group(1)
@@ -1474,6 +1519,13 @@ if os.path.isfile(events_yaml_path):
                 continue
             # Skip global property names
             if token in global_props:
+                continue
+            # Skip event-level property names
+            if token in event_props:
+                continue
+            # Skip events/properties defined in YAML code blocks within this skill
+            # (events the skill adds to EVENTS.yaml at runtime)
+            if token in skill_defined_events or token in skill_defined_props:
                 continue
             # Skip if preceded by "from EVENTS.yaml" or "in EVENTS.yaml" within 100 chars
             context_before = prose[start:m.start()].lower()
@@ -1655,6 +1707,203 @@ if os.path.isfile(change_path_37):
                     f"classification-dependent language but appears before "
                     f"the classification step (Step {classify_step})"
                 )
+
+# ---------------------------------------------------------------------------
+# Check 38: Ads.yaml Schema Validation
+# ---------------------------------------------------------------------------
+
+ads_yaml_path = "idea/ads.yaml"
+if os.path.isfile(ads_yaml_path):
+    with open(ads_yaml_path) as f:
+        try:
+            ads_data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            error(f"[38] {ads_yaml_path}: invalid YAML: {e}")
+            ads_data = None
+
+    if ads_data and isinstance(ads_data, dict):
+        # Required top-level keys
+        ads_required_keys = [
+            "campaign_name", "project_name", "landing_url", "keywords",
+            "ads", "budget", "targeting", "conversions", "guardrails",
+            "thresholds",
+        ]
+        for key in ads_required_keys:
+            if key not in ads_data:
+                error(f"[38] {ads_yaml_path}: missing required key '{key}'")
+
+        # Keyword minimums
+        kw = ads_data.get("keywords", {})
+        if isinstance(kw, dict):
+            if len(kw.get("exact", []) or []) < 3:
+                error(
+                    f"[38] {ads_yaml_path}: keywords.exact needs at least "
+                    f"3 entries"
+                )
+            if len(kw.get("phrase", []) or []) < 2:
+                error(
+                    f"[38] {ads_yaml_path}: keywords.phrase needs at least "
+                    f"2 entries"
+                )
+            if len(kw.get("broad", []) or []) < 1:
+                error(
+                    f"[38] {ads_yaml_path}: keywords.broad needs at least "
+                    f"1 entry"
+                )
+            if len(kw.get("negative", []) or []) < 2:
+                error(
+                    f"[38] {ads_yaml_path}: keywords.negative needs at least "
+                    f"2 entries"
+                )
+
+        # Ad copy minimums (RSA constraints)
+        ads_list = ads_data.get("ads", [])
+        if isinstance(ads_list, list):
+            if len(ads_list) < 2:
+                error(
+                    f"[38] {ads_yaml_path}: ads needs at least 2 variations"
+                )
+            for i, ad in enumerate(ads_list):
+                if isinstance(ad, dict):
+                    headlines = ad.get("headlines", []) or []
+                    descriptions = ad.get("descriptions", []) or []
+                    if len(headlines) < 5:
+                        error(
+                            f"[38] {ads_yaml_path}: ads[{i}] needs at least "
+                            f"5 headlines"
+                        )
+                    if len(descriptions) < 2:
+                        error(
+                            f"[38] {ads_yaml_path}: ads[{i}] needs at least "
+                            f"2 descriptions"
+                        )
+
+        # Budget limits
+        budget = ads_data.get("budget", {})
+        if isinstance(budget, dict):
+            total = budget.get("total_budget_cents", 0) or 0
+            if total > 50000:
+                error(
+                    f"[38] {ads_yaml_path}: budget.total_budget_cents "
+                    f"({total}) exceeds max 50000 ($500)"
+                )
+
+        # Guardrails nested fields
+        guardrails = ads_data.get("guardrails", {})
+        if isinstance(guardrails, dict):
+            max_cpc = guardrails.get("max_cpc_cents")
+            if max_cpc is None:
+                error(
+                    f"[38] {ads_yaml_path}: missing guardrails.max_cpc_cents"
+                )
+            elif not isinstance(max_cpc, int) or max_cpc <= 0:
+                error(
+                    f"[38] {ads_yaml_path}: guardrails.max_cpc_cents must "
+                    f"be an integer > 0 (got {max_cpc!r})"
+                )
+
+        # Thresholds nested fields
+        thresholds = ads_data.get("thresholds", {})
+        if isinstance(thresholds, dict):
+            exp_act = thresholds.get("expected_activations")
+            if exp_act is None:
+                error(
+                    f"[38] {ads_yaml_path}: missing "
+                    f"thresholds.expected_activations"
+                )
+            elif not isinstance(exp_act, int) or exp_act < 0:
+                error(
+                    f"[38] {ads_yaml_path}: thresholds.expected_activations "
+                    f"must be an integer >= 0 (got {exp_act!r})"
+                )
+
+            go_signal = thresholds.get("go_signal")
+            if not go_signal or not isinstance(go_signal, str) or not go_signal.strip():
+                error(
+                    f"[38] {ads_yaml_path}: thresholds.go_signal must be "
+                    f"a non-empty string"
+                )
+
+            no_go_signal = thresholds.get("no_go_signal")
+            if not no_go_signal or not isinstance(no_go_signal, str) or not no_go_signal.strip():
+                error(
+                    f"[38] {ads_yaml_path}: thresholds.no_go_signal must "
+                    f"be a non-empty string"
+                )
+
+# ---------------------------------------------------------------------------
+# Check 39: Ads.yaml Campaign Name Matches idea.yaml Name
+# ---------------------------------------------------------------------------
+
+if os.path.isfile(ads_yaml_path) and os.path.isfile("idea/idea.yaml"):
+    with open("idea/idea.yaml") as f:
+        idea_data_39 = yaml.safe_load(f)
+
+    if os.path.isfile(ads_yaml_path):
+        with open(ads_yaml_path) as f:
+            try:
+                ads_data_39 = yaml.safe_load(f)
+            except yaml.YAMLError:
+                ads_data_39 = None
+
+        if (
+            ads_data_39
+            and isinstance(ads_data_39, dict)
+            and isinstance(idea_data_39, dict)
+        ):
+            idea_name = idea_data_39.get("name", "")
+            campaign_name = ads_data_39.get("campaign_name", "")
+            if idea_name and campaign_name:
+                if not str(campaign_name).startswith(str(idea_name)):
+                    error(
+                        f"[39] {ads_yaml_path}: campaign_name "
+                        f"'{campaign_name}' does not start with idea.yaml "
+                        f"name '{idea_name}'"
+                    )
+
+# ---------------------------------------------------------------------------
+# Check 40: Distribute Skill Prose Event Names
+# ---------------------------------------------------------------------------
+
+# The distribute skill adds feedback_submitted to EVENTS.yaml at runtime.
+# Verify that distribute.md contains the event definition in a code block
+# (so it can be added during Step 7c).
+distribute_path = ".claude/commands/distribute.md"
+if os.path.isfile(distribute_path):
+    with open(distribute_path) as f:
+        distribute_content = f.read()
+
+    # distribute.md must contain a YAML code block that defines feedback_submitted
+    yaml_blocks = extract_code_blocks(distribute_content, {"yaml"})
+    has_event_def = any(
+        "feedback_submitted" in block["code"] and "event:" in block["code"]
+        for block in yaml_blocks
+    )
+    if not has_event_def:
+        error(
+            f"[40] {distribute_path}: must contain a YAML code block "
+            f"defining the 'feedback_submitted' event (added to "
+            f"EVENTS.yaml custom_events during Step 7c)"
+        )
+
+# ---------------------------------------------------------------------------
+# Check 41: Distribute Skill Docs Reference Exists
+# ---------------------------------------------------------------------------
+
+distribute_path_41 = ".claude/commands/distribute.md"
+if os.path.isfile(distribute_path_41):
+    with open(distribute_path_41) as f:
+        distribute_content_41 = f.read()
+
+    # Check if distribute.md references docs/google-ads-setup.md
+    docs_ref_match = re.search(r"`(docs/google-ads-setup\.md)`", distribute_content_41)
+    if docs_ref_match:
+        referenced_path = docs_ref_match.group(1)
+        if not os.path.isfile(referenced_path):
+            error(
+                f"[41] {distribute_path_41}: references `{referenced_path}` "
+                f"but that file does not exist on disk"
+            )
 
 # ---------------------------------------------------------------------------
 # Summary
