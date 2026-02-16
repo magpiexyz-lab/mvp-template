@@ -1,0 +1,57 @@
+# Test fixture: Database (supabase) without auth, with Playwright testing
+# Exercises the no-auth-fallback testing path with database present —
+# verifies that no-auth CI template handles database env vars correctly.
+idea:
+  name: test-db-only-tests
+  title: DB+Tests — Public App with Database and E2E Tests
+  owner: tester
+  template_repo: acme/experiment-template
+
+  problem: |
+    Users need a public data browser to explore open datasets without needing to sign in.
+
+  solution: |
+    A public app backed by Supabase for data storage, with E2E tests to verify the browsing flow.
+
+  target_user: Data enthusiasts exploring open datasets
+
+  distribution: |
+    Share in data communities and forums.
+
+  pages:
+    - name: landing
+      purpose: Explain the dataset and invite users to explore
+    - name: browse
+      purpose: Browse and filter the dataset
+
+  features:
+    - Landing page with dataset description
+    - Public data browser with filters (no auth required)
+
+  primary_metric: Dataset page views
+  target_value: "100 browse page visits in 1 week"
+  measurement_window: 1 week
+
+  stack:
+    framework: nextjs
+    database: supabase
+    analytics: posthog
+    ui: shadcn
+    hosting: vercel
+    testing: playwright
+
+events:
+  standard_funnel:
+    - event: visit_landing
+      trigger: User loads the landing page
+    - event: activate
+      trigger: User applies a filter on the browse page
+    - event: retain_return
+      trigger: User returns after 24+ hours
+  custom_events: []
+
+assertions:
+  payment_events_required: false
+  activate_required: true
+  skippable_events: [signup_start, signup_complete]
+  min_pages: 2

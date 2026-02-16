@@ -31,17 +31,7 @@ Follow the branch setup procedure in `.claude/patterns/branch.md`. Use branch pr
 - Resolve the stack: read idea.yaml `stack`. For each category, read `.claude/stacks/<category>/<value>.md`. If a stack file doesn't exist, use your knowledge of that technology.
 - Scan `src/app/` to understand the current page structure and codebase state
 
-## Step 3: Check preconditions
-
-- Verify `package.json` exists. If not, stop and tell the user: "No app found. Run `/bootstrap` first, or if you already have a bootstrap PR open, merge it before running `/change`."
-- Verify `EVENTS.yaml` exists. If not, stop and tell the user: "EVENTS.yaml not found. This file defines all analytics events and is required. Restore it from your template repo or re-create it following the format in the EVENTS.yaml section of the template."
-- Run `npm run build` to confirm the project compiles before making changes (unless the change IS about fixing the build or is classified as a Fix). If the build fails and the change is not a build fix or Fix-type change: stop and tell the user: "The app has build errors that need to be fixed first. Run `/change fix build errors` to address them. After that PR is merged, re-run your original change. Note: the current branch will be abandoned — this is expected. You can delete it later with `git branch -d` followed by the branch name created in Step 0. Re-running `/change` creates a new branch (the name may have a numeric suffix like `-2` if the old branch still exists)."
-- For analytics changes: verify the analytics library file exists (see analytics stack file for expected path). If it doesn't, stop and tell the user: "Analytics library not found. Run `/bootstrap` first."
-- If `$ARGUMENTS` mentions payment or the change will add `payment` to the stack: verify `stack.auth` and `stack.database` are present in idea.yaml. If `stack.auth` is missing, stop: "Payment requires authentication. Add `auth: supabase` (or another auth provider) to idea.yaml `stack` first." If `stack.database` is missing, stop: "Payment requires a database. Add `database: supabase` (or another database provider) to idea.yaml `stack` first."
-- If `testing` is present in idea.yaml `stack` and the classified type is NOT Test: read the testing stack file's `assumes` list and verify each `category/value` pair against idea.yaml `stack`. If any assumption is unmet, stop: "Your testing setup assumes [unmet dependencies]. Tests will break. Run '/change fix test configuration' first, or remove 'testing' from idea.yaml 'stack'."
-- If classified as Test type: read the testing stack file's `assumes` list and check each `category/value` against idea.yaml `stack` (per bootstrap's validation approach: the value must match, not just the category). Record the result — this determines the template path reported in the plan.
-
-## Step 4: Classify the change
+## Step 3: Classify the change
 
 Determine the type from `$ARGUMENTS`:
 
@@ -54,6 +44,16 @@ Determine the type from `$ARGUMENTS`:
 | Test      | Adds or fixes tests                         |
 
 State the classification before proceeding: "I'm treating this as a **[type]** change."
+
+## Step 4: Check preconditions
+
+- Verify `package.json` exists. If not, stop and tell the user: "No app found. Run `/bootstrap` first, or if you already have a bootstrap PR open, merge it before running `/change`."
+- Verify `EVENTS.yaml` exists. If not, stop and tell the user: "EVENTS.yaml not found. This file defines all analytics events and is required. Restore it from your template repo or re-create it following the format in the EVENTS.yaml section of the template."
+- Run `npm run build` to confirm the project compiles before making changes (unless the change IS about fixing the build or is classified as a Fix). If the build fails and the change is not a build fix or Fix-type change: stop and tell the user: "The app has build errors that need to be fixed first. Run `/change fix build errors` to address them. After that PR is merged, re-run your original change. Note: the current branch will be abandoned — this is expected. You can delete it later with `git branch -d` followed by the branch name created in Step 0. Re-running `/change` creates a new branch (the name may have a numeric suffix like `-2` if the old branch still exists)."
+- For analytics changes: verify the analytics library file exists (see analytics stack file for expected path). If it doesn't, stop and tell the user: "Analytics library not found. Run `/bootstrap` first."
+- If `$ARGUMENTS` mentions payment or the change will add `payment` to the stack: verify `stack.auth` and `stack.database` are present in idea.yaml. If `stack.auth` is missing, stop: "Payment requires authentication. Add `auth: supabase` (or another auth provider) to idea.yaml `stack` first." If `stack.database` is missing, stop: "Payment requires a database. Add `database: supabase` (or another database provider) to idea.yaml `stack` first."
+- If `testing` is present in idea.yaml `stack` and the classified type is NOT Test: read the testing stack file's `assumes` list and verify each `category/value` pair against idea.yaml `stack`. If any assumption is unmet, stop: "Your testing setup assumes [unmet dependencies]. Tests will break. Run '/change fix test configuration' first, or remove 'testing' from idea.yaml 'stack'."
+- If classified as Test type: read the testing stack file's `assumes` list and check each `category/value` against idea.yaml `stack` (per bootstrap's validation approach: the value must match, not just the category). Record the result — this determines the template path reported in the plan.
 
 ---
 
@@ -212,7 +212,7 @@ If the user requests changes instead of approving, revise the plan to address th
 - Call `blockAnalytics(page)` in `beforeEach` to prevent analytics pollution. The default `blockAnalytics` route pattern targets PostHog — if the analytics provider is different, adapt the route pattern using the endpoint domain from the analytics stack file.
 - For payment tests: use Stripe test card `4242424242424242`
 - Before applying testing stack file templates: read the testing stack file's `assumes` list. For each `category/value` entry, verify that idea.yaml `stack` has a matching `category: value` pair (e.g., `analytics/posthog` requires `stack.analytics: posthog`, not just that `analytics` is present). If ALL assumed dependencies match → use the full templates (global-setup/teardown, login helper, auth-based tests). If ANY assumed dependency is unmet → use the testing stack file's "No-Auth Fallback" section instead (no global-setup/teardown, no login helper, tests run as anonymous visitors). Document the chosen path in the PR body.
-- Update `.gitignore` and CI workflow per the testing stack file. Add env vars to `.env.example` based on the chosen template path (full or no-auth fallback), not solely from the frontmatter.
+- Update `.gitignore` and CI workflow per the testing stack file. If using the No-Auth Fallback path, **replace** the existing `e2e:` job in `.github/workflows/ci.yml` with the testing stack file's No-Auth CI Job Template — the pre-baked `e2e:` job checks for `SUPABASE_SERVICE_ROLE_KEY` and silently skips all tests when it is absent. Add env vars to `.env.example` based on the chosen template path (full or no-auth fallback), not solely from the frontmatter.
 - If `stack.payment` is present, uncomment payment-related env vars in the testing CI template when generating the CI job.
 
 ### Step 7: Verify

@@ -87,6 +87,41 @@ validate: ## Check idea.yaml for valid YAML, TODOs, name format, and landing pag
 	sys.exit(2) if warnings else sys.exit(0); \
 	" || STACK_WARN=$$?; \
 	if [ "$$STACK_WARN" -ne 0 ] && [ "$$STACK_WARN" -ne 2 ]; then exit 1; fi; \
+	python3 -c "\
+	import yaml, sys; \
+	data = yaml.safe_load(open('idea/idea.yaml')); \
+	stack = data.get('stack', {}); \
+	if 'testing' in stack: \
+	    print('  Warning: stack.testing is set but /bootstrap will reject it.'); \
+	    print('  Testing must be added after the initial bootstrap PR is merged.'); \
+	    print(\"  Remove 'testing:' now, or add it later with '/change add E2E smoke tests'.\"); \
+	"; \
+	python3 -c "\
+	import yaml, re, os, sys; \
+	data = yaml.safe_load(open('idea/idea.yaml')); \
+	stack = data.get('stack', {}); \
+	warnings = []; \
+	for cat, val in stack.items(): \
+	    sf = f'.claude/stacks/{cat}/{val}.md'; \
+	    if not os.path.isfile(sf): continue; \
+	    with open(sf) as f: content = f.read(); \
+	    m = re.match(r'^---\n(.*?\n)---', content, re.DOTALL); \
+	    if not m: continue; \
+	    fm = yaml.safe_load(m.group(1)) or {}; \
+	    for assume in (fm.get('assumes') or []): \
+	        parts = assume.split('/'); \
+	        if len(parts) != 2: continue; \
+	        a_cat, a_val = parts; \
+	        actual = stack.get(a_cat); \
+	        if actual is None: \
+	            warnings.append(f'stack.{cat}/{val} assumes {assume}, but stack.{a_cat} is not set'); \
+	        elif actual != a_val: \
+	            warnings.append(f'stack.{cat}/{val} assumes {assume}, but stack.{a_cat} is {actual}'); \
+	if warnings: \
+	    print('  Warning: stack assumes mismatches:'); \
+	    [print(f'    - {w}') for w in warnings]; \
+	    print('  /bootstrap will reject these. Fix idea.yaml stack values or create compatible stack files.'); \
+	"; \
 	if [ -f EVENTS.yaml ]; then \
 		python3 -c "\
 		import yaml, sys; \

@@ -1,7 +1,7 @@
 # Check Inventory
 
 Scannable reference listing all automated checks by name, grouped by validator.
-52 active checks consolidated into 48 inventory rows.
+57 active checks consolidated into 53 inventory rows.
 
 Last updated: 2026-02-16
 
@@ -62,8 +62,13 @@ better enforced by the scoped LLM review (`scripts/scoped-review-prompt.md`).
 | Verify change skill assumes validation matches bootstrap assumes validation | change.md assumes validation must include value-matching language, not just category-existence checks |
 | Verify change skill validates payment dependencies before plan phase | At least one payment dependency stop message must appear before the plan phase marker in change.md |
 | Verify analytics stack files include Dashboard Navigation section | Every `.claude/stacks/analytics/*.md` file must contain a `## Dashboard Navigation` heading (case-insensitive) |
-| Verify change skill revalidates testing assumes for all change types | change.md Step 3 must contain testing assumes validation that is NOT gated by the Test-type classification |
+| Verify change skill revalidates testing assumes for all change types | change.md preconditions step must contain testing assumes validation that is NOT gated by the Test-type classification |
 | Verify analytics stack files include Test Blocking section | Every `.claude/stacks/analytics/*.md` file must contain a `## Test Blocking` heading (case-insensitive) |
+| Verify skill prose event names exist in EVENTS.yaml | Backtick-wrapped snake_case tokens in skill prose appearing near event/fire context must exist in EVENTS.yaml or reference "from/in EVENTS.yaml" within 100 chars |
+| Verify stack files with fallback sections annotate conditional files in frontmatter | Stack files with fallback sections listing assumes-dependent files in `files` frontmatter must include a `# conditional` annotation |
+| Verify no-auth CI template includes commented database placeholder env vars | If the full-auth CI Job Template in the testing stack includes database-related env var names, the No-Auth CI Job Template must also contain them (commented or uncommented) |
+| Verify Makefile validate warns about bootstrap-excluded stack categories | Makefile `validate` target must check for `testing` in idea.yaml `stack` and warn that bootstrap rejects it |
+| Verify change skill classification precedes classification-dependent checks | In change.md, the step heading containing "Classify" must appear before any step heading whose body contains "classified as" or "is a Fix" or "is NOT Test" |
 
 ## consistency-check.sh
 

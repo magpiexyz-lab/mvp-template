@@ -92,7 +92,7 @@ DO NOT write any code, create any files, or run any install commands during this
 - Install dev dependencies from the framework and UI stack files
 - Run the UI setup commands from the UI stack file
 - After UI setup, verify the UI stack file's post-setup checks pass (PostCSS config, globals.css, scripts intact)
-- If any install command fails: stop, show the error, and ask the user to fix the environment issue. After fixing, tell Claude: "Continue the bootstrap on this branch from the install step." Claude will re-run the failed install and any subsequent install commands, then continue with Step 2. Do NOT re-run `/bootstrap` (that would create a duplicate branch).
+- If any install command fails: stop, show the error, and ask the user to fix the environment issue. After fixing, tell Claude: "Continue the bootstrap on this branch from the install step." Claude will re-run the failed install and any subsequent install commands, then continue with Step 2. Do NOT re-run `/bootstrap` (that would create a duplicate branch). If you close this conversation: either (1) commit partial files on this branch (`git add -A && git commit -m "WIP: partial install"`), then tell Claude "Continue the bootstrap on this branch from the install step"; or (2) switch to main (`git checkout main`), run `make clean`, and start `/bootstrap` fresh.
 
 ### Step 2: Core library files
 - Create the library files specified in each stack file's "Files to Create" section:
@@ -129,7 +129,7 @@ For each entry in idea.yaml `pages`:
 - **Auth pages (if listed)**: signup/login forms using auth provider UI (see auth stack file). Fire the corresponding EVENTS.yaml events at their specified triggers. Update the post-auth redirect in signup and login pages to navigate to the first non-auth, non-landing page from idea.yaml (e.g., `/dashboard`). If no such page exists, keep the redirect to `/`.
 - **All other pages**: functional layout with heading, description matching the page's `purpose` from idea.yaml, and a clear next-action CTA. Not blank placeholders — each page should feel like a real (if minimal) screen
 
-> **STOP** — verify analytics before proceeding. Every page must fire its `page_viewed` event. Every user action listed in EVENTS.yaml must have a tracking call. Do not move to Checkpoint B until each event is wired. "I'll add analytics later" is not acceptable.
+> **STOP** — verify analytics before proceeding. Every page must fire its EVENTS.yaml event(s). Every user action listed in EVENTS.yaml must have a tracking call. Do not move to Checkpoint B until each event is wired. "I'll add analytics later" is not acceptable.
 
 ### Checkpoint B — verify pages layer
 - Run `npm run build` to verify all pages compile and their imports from the library files resolve correctly
