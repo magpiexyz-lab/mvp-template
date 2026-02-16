@@ -2,6 +2,8 @@
 
 Run this procedure after making code changes and before committing.
 
+> **Do NOT skip this procedure.** Do NOT claim the build passes without running it. Do NOT commit without a passing build. There are no exceptions.
+
 ## Build & Lint Loop (max 3 attempts)
 
 You have a budget of **3 attempts** to get a clean build and lint. Track each failed
@@ -17,6 +19,7 @@ For each attempt:
 4. If lint fails: note the errors (mentally log: "Attempt N — lint: [error summary]").
    Fix the errors, then start the next attempt.
 5. If both pass: verification is complete. Proceed to the next step.
+6. **Prove it.** Quote the last 3–5 lines of the build output in your response. State facts: "Build completed with 0 errors. Lint passed with 0 warnings." Never say "should work", "probably passes", or "seems fine."
 
 **If all 3 attempts fail**, stop and report to the user:
 

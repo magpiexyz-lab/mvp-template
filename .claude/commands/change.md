@@ -1,4 +1,5 @@
 ---
+description: "Use for any modification to an existing bootstrapped app: new features, bug fixes, UI polish, analytics fixes, or adding tests."
 type: code-writing
 reads:
   - idea/idea.yaml
@@ -171,6 +172,9 @@ If the user requests changes instead of approving, revise the plan to address th
 - Wire analytics: every user action in the new feature must fire a tracked event
 - Create new pages following the framework stack file's file structure
 - Every new page: follow page conventions from the framework stack file, import tracking functions per the analytics stack file, fire appropriate EVENTS.yaml events
+
+> **STOP** — verify analytics before proceeding. Every new page must fire its events from EVENTS.yaml. Every user action in the new feature must have a tracking call. Do not proceed until confirmed. "I'll add analytics later" is not acceptable.
+
 - Create or modify API routes for any new mutations (see framework stack file for route conventions). Every API route: validate input with zod, return proper HTTP status codes. If `stack.database` is present, use the server-side database client for data access.
 - If database tables are needed: create a migration following the database stack file (next sequential number, `IF NOT EXISTS`), add TypeScript types, add post-merge instructions to PR body. Note: concurrent branches may create conflicting migration numbers — resolve by renumbering the later-merged migration at merge time.
 - **If Multi-layer**: implement in two sub-steps with an intermediate build check:
@@ -217,6 +221,7 @@ If the user requests changes instead of approving, revise the plan to address th
   - **Polish**: open each changed file and confirm analytics imports and event calls are intact.
   - **Analytics**: re-trace each standard funnel event through the code to confirm it now fires correctly.
   - **Test**: run `npx playwright test --list` to verify test discovery works. If test discovery fails, treat it as a build error — fix the test files and re-run. If still failing after the verify.md retry budget, report to the user with the error output.
+  - **Feature (spec compliance)**: Re-read `idea/idea.yaml`. For each page in `pages`, confirm `src/app/<page-name>/page.tsx` exists. For each feature in `features`, confirm the implementation addresses it. For each event in `EVENTS.yaml`, confirm tracking calls are intact. If anything is missing, fix it before proceeding.
 
 ### Step 8: Commit, push, open PR
 - You are already on a feature branch (created in Step 0). Do not create another branch.
@@ -229,6 +234,7 @@ If the user requests changes instead of approving, revise the plan to address th
   - **Checklist — Scope**: check all boxes. For features: confirm idea.yaml was updated.
   - **Checklist — Analytics**: list all new/modified events and which pages fire them. For fixes/polish: confirm no events were removed or broken.
   - **Checklist — Build**: confirm build passes, no hardcoded secrets
+- Fill in **every** section of the PR template. Empty sections are not acceptable. If a section does not apply, write "N/A" with a one-line reason.
 - If `git push` or `gh pr create` fails: show the error and tell the user to check their GitHub authentication (`gh auth status`) and remote configuration (`git remote -v`), then retry.
 
 ## Do NOT

@@ -1,4 +1,5 @@
 ---
+description: "Use at the end of an experiment or when the measurement window ends. Files structured feedback as a GitHub Issue."
 type: analysis-only
 reads:
   - idea/idea.yaml

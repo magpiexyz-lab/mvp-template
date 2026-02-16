@@ -1,4 +1,5 @@
 ---
+description: "Use when starting a new experiment from a filled-in idea.yaml. Run once per project."
 type: code-writing
 reads:
   - idea/idea.yaml
@@ -128,6 +129,8 @@ For each entry in idea.yaml `pages`:
 - **Auth pages (if listed)**: signup/login forms using auth provider UI (see auth stack file). Fire the corresponding EVENTS.yaml events at their specified triggers. Update the post-auth redirect in signup and login pages to navigate to the first non-auth, non-landing page from idea.yaml (e.g., `/dashboard`). If no such page exists, keep the redirect to `/`.
 - **All other pages**: functional layout with heading, description matching the page's `purpose` from idea.yaml, and a clear next-action CTA. Not blank placeholders — each page should feel like a real (if minimal) screen
 
+> **STOP** — verify analytics before proceeding. Every page must fire its `page_viewed` event. Every user action listed in EVENTS.yaml must have a tracking call. Do not move to Checkpoint B until each event is wired. "I'll add analytics later" is not acceptable.
+
 ### Checkpoint B — verify pages layer
 - Run `npm run build` to verify all pages compile and their imports from the library files resolve correctly
 - If the build fails: fix the errors in the page files (or in the library files they import from) before proceeding. After fixing, re-run `npm run build` to confirm.
@@ -156,6 +159,14 @@ If no features require database tables, skip this step.
 ### Step 8: Verify before shipping
 - Follow the verification procedure in `.claude/patterns/verify.md` (build & lint with retry)
 
+### Step 8b: Spec compliance check
+
+Re-read `idea/idea.yaml` now. Verify each of these before proceeding to the PR:
+- For each page in `pages`: confirm `src/app/<page-name>/page.tsx` exists (or root page for `landing`)
+- For each feature in `features`: confirm the implementation addresses it
+- For each standard_funnel event in `EVENTS.yaml`: confirm a tracking call exists in the appropriate page
+- If anything is missing, implement it now. Do not proceed with gaps.
+
 ### Step 9: Commit, push, open PR
 - You are already on a feature branch (created in Step 0). Do not create another branch.
 - Stage all new files and commit: "Bootstrap MVP scaffold from idea.yaml"
@@ -168,6 +179,7 @@ If no features require database tables, skip this step.
   - **Checklist — Analytics**: list every event wired and which page fires it
   - **Checklist — Build**: confirm build passes, no hardcoded secrets, .env.example created
 - Add a prominent note at the top of the PR body with post-merge instructions: database setup (from database stack file), environment variable setup (from .env.example)
+- Fill in **every** section of the PR template. Empty sections are not acceptable. If a section does not apply, write "N/A" with a one-line reason.
 - If `git push` or `gh pr create` fails: show the error and tell the user to check their GitHub authentication (`gh auth status`) and remote configuration (`git remote -v`), then retry the push and PR creation.
 
 ## Do NOT
