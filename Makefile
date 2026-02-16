@@ -21,7 +21,7 @@ help: ## Show this help message
 validate: ## Check idea.yaml for valid YAML, TODOs, name format, and landing page
 	@echo "Validating idea/idea.yaml..."
 	@if [ ! -f idea/idea.yaml ]; then \
-		echo "Error: idea/idea.yaml not found"; \
+		echo "Error: idea/idea.yaml not found. Copy the example: cp idea/idea.example.yaml idea/idea.yaml"; \
 		exit 1; \
 	fi
 	@command -v python3 >/dev/null 2>&1 || { \
