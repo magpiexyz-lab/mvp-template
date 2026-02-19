@@ -97,7 +97,19 @@ Add the same env vars in your Vercel project settings for production.
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see your app.
+Open [http://localhost:3000](http://localhost:3000) to verify your app works.
+
+### 6. Deploy to production
+
+```bash
+make deploy
+```
+
+First deploy will prompt you to link the repo to a Vercel project — follow the CLI prompts. After linking, future deploys work automatically.
+
+### 7. Verify the deployment
+
+Open Claude Code and run `/verify`. This runs E2E tests against the deployed app and auto-fixes any failures.
 
 ## Commands
 
