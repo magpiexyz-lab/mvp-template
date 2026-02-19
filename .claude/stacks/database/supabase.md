@@ -90,6 +90,23 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 - Add SQL comments explaining each table's purpose
 - The user runs each migration manually in **Supabase Dashboard -> SQL Editor**
 
+## Local Development (when `stack.testing` is present)
+
+When the project has `stack.testing` configured, E2E tests run against a **local** Supabase instance instead of the remote project. This keeps tests isolated, fast, and secret-free.
+
+- `supabase init` creates `supabase/config.toml` (commit this file — it configures the local instance)
+- `supabase start` starts local Postgres + Auth + API (requires Docker Desktop)
+- `supabase db reset` applies all migrations from `supabase/migrations/`
+- `supabase stop` shuts down the local instance
+
+### Deterministic local keys
+
+These keys are hardcoded in the local Supabase instance and are safe to commit in test configuration. They only work against the local instance — never against a remote project.
+
+- **URL:** `http://127.0.0.1:54321`
+- **Anon key:** `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0`
+- **Service role key:** `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU`
+
 ## Types
 - Create TypeScript types matching table schemas in `src/lib/types.ts`
 

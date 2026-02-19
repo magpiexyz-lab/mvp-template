@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help validate distribute test-e2e deploy clean clean-all
+.PHONY: help validate distribute test-e2e deploy clean clean-all supabase-start supabase-stop
 
 help: ## Show this help message
 	@echo "Usage: make <command>"
@@ -105,6 +105,20 @@ distribute: ## Validate idea/ads.yaml (valid YAML, schema, budget limits)
 	sys.exit(1) if errors else print('idea/ads.yaml looks good — valid schema.'); \
 	"
 
+supabase-start: ## Start local Supabase for testing (requires Docker)
+	@if [ ! -f supabase/config.toml ]; then \
+		echo "Error: supabase/config.toml not found. Run 'npx supabase init' first (bootstrap does this automatically)."; \
+		exit 1; \
+	fi
+	@echo "Starting local Supabase..."
+	npx supabase start -x realtime,storage,imgproxy,inbucket,pgadmin-schema-diff,migra,postgres-meta,studio,edge-runtime,logflare,pgbouncer,vector
+	@echo "Applying migrations..."
+	npx supabase db reset
+	@echo "Local Supabase is ready."
+
+supabase-stop: ## Stop local Supabase
+	-npx supabase stop
+
 test-e2e: ## Run Playwright E2E tests
 	@if [ -f playwright.config.ts ]; then \
 		npx playwright test; \
@@ -129,6 +143,13 @@ deploy: ## Deploy to Vercel (first run will prompt to link project)
 	fi
 	@echo "Deploying to Vercel..."
 	npx vercel deploy --prod
+	@echo "Checking deployment health..."
+	@DEPLOY_URL=$$(npx vercel inspect --json 2>/dev/null | python3 -c "import sys,json; print('https://'+json.load(sys.stdin).get('alias',[''])[0])" 2>/dev/null); \
+	if [ -n "$$DEPLOY_URL" ] && curl -sf "$$DEPLOY_URL/api/health" > /dev/null 2>&1; then \
+		echo "Health check passed: $$DEPLOY_URL/api/health"; \
+	else \
+		echo "Warning: Could not verify health endpoint. Check your deployment manually."; \
+	fi
 
 # Default: Next.js + shadcn artifacts. Update if you change stack.framework or stack.ui.
 clean: ## Remove generated files (lets you re-run bootstrap)

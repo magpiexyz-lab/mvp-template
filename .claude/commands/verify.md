@@ -1,5 +1,5 @@
 ---
-description: "Use after deploying to verify the experiment works. Runs E2E tests and fixes failures."
+description: "Run E2E tests and fix failures. Use after /change and before deploy as a quality gate."
 type: code-writing
 reads:
   - idea/idea.yaml
@@ -12,7 +12,7 @@ references:
 branch_prefix: fix
 modifies_specs: false
 ---
-Verify the deployed experiment works by running E2E tests.
+Run E2E tests against the local dev server and fix any failures.
 
 ## Step 0: Read context
 
@@ -25,6 +25,21 @@ Verify the deployed experiment works by running E2E tests.
 - Verify `@playwright/test` is in package.json devDependencies. If not: "Playwright
   is not installed. Run `npm install -D @playwright/test && npx playwright install chromium`."
 
+### Full-Auth prerequisite checks
+
+If the testing stack file's `assumes` are all met (full-auth path) and `stack.database`
+is `supabase`:
+
+1. Check Docker is running: `docker info`. If it fails: stop and tell the user
+   "Docker Desktop is required for full-auth E2E tests. Start Docker Desktop and retry."
+2. Check `supabase/config.toml` exists. If not: stop and tell the user
+   "Run `npx supabase init` to create supabase/config.toml (bootstrap does this
+   automatically for full-auth projects)."
+3. Check if local Supabase is already running: `npx supabase status`. If not running,
+   start it: `npx supabase start -x realtime,storage,imgproxy,inbucket,pgadmin-schema-diff,migra,postgres-meta,studio,edge-runtime,logflare,pgbouncer,vector`.
+   Set an internal flag `STARTED_SUPABASE=true` so you know to stop it later.
+4. Apply migrations: `npx supabase db reset`
+
 ## Step 1: Run tests
 
 - Run `npx playwright test`
@@ -32,7 +47,7 @@ Verify the deployed experiment works by running E2E tests.
 
 ## Step 2: Report results
 
-- If ALL tests pass: report success with test count and summary. **Done.** No branch, no PR, no further steps.
+- If ALL tests pass: if `STARTED_SUPABASE=true`, run `npx supabase stop`. Report success with test count and summary. **Done.** No branch, no PR, no further steps.
 - If any tests fail: proceed to Step 3
 
 ## Step 3: Branch setup
@@ -49,7 +64,7 @@ For each attempt:
 5. If all pass: proceed to Step 5
 6. If still failing: note what you tried, start next attempt
 
-If all 3 attempts fail: report to the user with attempt history and remaining errors.
+If all 3 attempts fail: if `STARTED_SUPABASE=true`, run `npx supabase stop`. Report to the user with attempt history and remaining errors.
 Offer options: (1) tell me what to try, (2) save progress as WIP commit on this branch.
 
 ## Step 5: Verify build
@@ -63,8 +78,12 @@ Follow `.claude/patterns/verify.md` (build & lint with retry).
   - **Summary**: what tests were failing and what was fixed
   - **How to Test**: "Run `npm run test:e2e` — all tests should pass"
   - **What Changed**: files modified and why
-  - **Why**: tests were failing after deploy; fixes ensure the experiment is verified
+  - **Why**: tests were failing; fixes ensure the experiment is ready to deploy
   - **Checklist**: standard checks
+
+## Cleanup
+
+After tests complete (whether all pass or after Step 6): if `STARTED_SUPABASE=true`, run `npx supabase stop` to shut down the local Supabase instance this skill started.
 
 ## Do NOT
 - Modify idea.yaml or EVENTS.yaml

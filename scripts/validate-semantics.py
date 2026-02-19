@@ -201,6 +201,8 @@ if os.path.isfile(makefile_path):
         "clean-all",
         "help",
         "test-e2e",
+        "supabase-start",
+        "supabase-stop",
     }
 
     # Parse Makefile targets and their recipe lines

@@ -3,7 +3,8 @@ assumes: [framework/nextjs]
 packages:
   runtime: []
   dev: []
-files: []
+files:
+  - src/app/api/health/route.ts
 env:
   server: []
   client: []
@@ -22,6 +23,41 @@ gitignore: [.vercel/]
 npx vercel deploy --prod
 ```
 
+## Health Check
+
+### `src/app/api/health/route.ts` — Deployment health endpoint
+
+Bootstrap creates this endpoint unconditionally. It always returns basic status; service-specific checks are added based on the active stack.
+
+**Base template (always created):**
+```ts
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  const checks: Record<string, string> = { status: "ok" };
+  // Service checks are added by bootstrap based on active stack services.
+  // Each returns "ok" or an error message.
+  return NextResponse.json(checks);
+}
+```
+
+**When `stack.database` is present:** bootstrap adds a database connectivity check inside the function body — import the server client, run a lightweight query (e.g., `supabase.from('...').select('id').limit(1)`), and set `checks.database = "ok"` or the error message.
+
+**When `stack.auth` is present:** bootstrap adds an auth service check — call `supabase.auth.getUser()` with no session (expects an auth error, not a network error), and set `checks.auth = "ok"` or the error message.
+
+**Response:** Returns 200 with JSON `{ status: "ok", ... }` if all checks pass. Returns 503 if any check fails, with individual check results so failures are diagnosable.
+
+## Preview Smoke Test
+
+Vercel automatically creates preview deployments on PRs. CI runs page-load smoke tests against the preview URL before merge.
+
+- No auth, no database writes, no Docker required
+- Reuses existing `e2e/smoke.spec.ts` via `E2E_BASE_URL` pointed at the preview URL
+- PR-only (`github.event_name == 'pull_request'`) — pushes to main don't create preview deployments
+- Uses `patrickedqvist/wait-for-vercel-preview` GitHub Action to get the preview URL
+
+See the testing stack file's "Preview Smoke CI Job Template" section for the CI job template.
+
 ## Environment Variables
 - Set via **Vercel dashboard -> Project -> Settings -> Environment Variables**
 - Client-side env vars must use `NEXT_PUBLIC_` prefix
@@ -37,7 +73,9 @@ For auth and payment API routes:
 
 ## Patterns
 - Deploy with `npx vercel deploy --prod` for production deployments
+- After `make deploy`, the health endpoint is automatically checked
 - Use Vercel's preview deployments (automatic on PRs) for testing before production
+- Preview deployments are smoke-tested in CI before merge
 - Client-side environment variables must use the `NEXT_PUBLIC_` prefix
 - Environment variables are configured per-environment (Production, Preview, Development) in the Vercel dashboard
 
