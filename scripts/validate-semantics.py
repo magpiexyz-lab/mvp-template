@@ -37,12 +37,14 @@ Checks:
   33. Skill Prose Phantom Event Names — backtick-wrapped event names in skill prose exist in EVENTS.yaml
   34. Stack Files Conditional Files Frontmatter — fallback stacks annotate conditional files in frontmatter
   35. No-Auth CI Template Database Env Vars — no-auth CI template includes database placeholder env vars if full-auth template does
-  36. Makefile Validate Testing Warning — Makefile validate target warns about bootstrap-excluded stack categories
+  36. (removed)
   37. Change Classification Before Dependent Checks — classification step precedes classification-dependent checks
   38. Ads.yaml Schema Validation — required keys, keyword counts, ad copy RSA constraints, budget limits
   39. Ads.yaml Campaign Name Matches idea.yaml Name — campaign_name starts with idea.name
   40. Distribute Skill Prose Event Names — distribute.md contains feedback_submitted event definition
   41. Distribute Skill Docs Reference Exists — docs/google-ads-setup.md exists if distribute.md references it
+  42. Distribute Skill Validates Analytics Stack — distribute.md preconditions validate stack.analytics
+  43. Distribute Skill Validates EVENTS.yaml custom_events Structure — distribute.md preconditions validate custom_events is a list
 """
 
 import glob
@@ -1655,20 +1657,8 @@ for sf, content in stack_contents.items():
                 )
 
 # ---------------------------------------------------------------------------
-# Check 36: Makefile Validate Warns About Bootstrap-Excluded Stack Categories
+# Check 36: (removed — bootstrap now supports stack.testing)
 # ---------------------------------------------------------------------------
-
-if os.path.isfile(makefile_path):
-    validate_recipe_36 = targets.get("validate", "")
-
-    has_testing_check = bool(
-        re.search(r"testing", validate_recipe_36)
-    )
-    if not has_testing_check:
-        error(
-            f"[36] Makefile: validate target does not check for 'testing' "
-            f"in idea.yaml stack (bootstrap rejects it — validate should warn)"
-        )
 
 # ---------------------------------------------------------------------------
 # Check 37: Change Skill Classification Precedes Classification-Dependent Checks
@@ -1904,6 +1894,100 @@ if os.path.isfile(distribute_path_41):
                 f"[41] {distribute_path_41}: references `{referenced_path}` "
                 f"but that file does not exist on disk"
             )
+
+# ---------------------------------------------------------------------------
+# Check 42: Distribute Skill Validates Analytics Stack in idea.yaml
+# ---------------------------------------------------------------------------
+
+distribute_path_42 = ".claude/commands/distribute.md"
+if os.path.isfile(distribute_path_42):
+    with open(distribute_path_42) as f:
+        distribute_content_42 = f.read()
+
+    # Find preconditions section (between "Step 1" and "Step 2" headings)
+    preconditions_match_42 = re.search(
+        r"## Step 1:.*?\n(.*?)(?=\n## Step 2:|\Z)",
+        distribute_content_42,
+        re.DOTALL,
+    )
+    if preconditions_match_42:
+        preconditions_text_42 = preconditions_match_42.group(1)
+        # Check for a stop message mentioning analytics being required
+        has_analytics_validation = bool(
+            re.search(
+                r"(?i)analytics.*(?:required|not present|not configured).*stop|"
+                r"stack\.analytics.*(?:present|not|missing)|"
+                r"(?:verify|check).*stack\.analytics",
+                preconditions_text_42,
+            )
+        )
+        if not has_analytics_validation:
+            error(
+                f"[42] {distribute_path_42}: preconditions section does not "
+                f"validate that `stack.analytics` is present in idea.yaml "
+                f"before proceeding"
+            )
+    else:
+        error(
+            f"[42] {distribute_path_42}: could not find preconditions section "
+            f"(Step 1) to check analytics validation"
+        )
+
+# ---------------------------------------------------------------------------
+# Check 43: Distribute Skill Validates EVENTS.yaml custom_events Structure
+# ---------------------------------------------------------------------------
+
+distribute_path_43 = ".claude/commands/distribute.md"
+if os.path.isfile(distribute_path_43):
+    with open(distribute_path_43) as f:
+        distribute_content_43 = f.read()
+
+    # Find preconditions section (between "Step 1" and "Step 2" headings)
+    preconditions_match_43 = re.search(
+        r"## Step 1:.*?\n(.*?)(?=\n## Step 2:|\Z)",
+        distribute_content_43,
+        re.DOTALL,
+    )
+    if preconditions_match_43:
+        preconditions_text_43 = preconditions_match_43.group(1)
+        # Check for custom_events validation near stop/list/malformed/missing context
+        has_custom_events_validation = bool(
+            re.search(
+                r"custom_events",
+                preconditions_text_43,
+            )
+        )
+        if has_custom_events_validation:
+            # Verify it's near a validation/stop context (within 200 chars)
+            ce_match = re.search(r"custom_events", preconditions_text_43)
+            if ce_match:
+                start = max(0, ce_match.start() - 200)
+                end = min(len(preconditions_text_43), ce_match.end() + 200)
+                context = preconditions_text_43[start:end]
+                has_validation_context = bool(
+                    re.search(
+                        r"(?i)stop|list|malformed|missing",
+                        context,
+                    )
+                )
+                if not has_validation_context:
+                    error(
+                        f"[43] {distribute_path_43}: preconditions mention "
+                        f"`custom_events` but not near a stop/validation "
+                        f"context (expected 'stop', 'list', 'malformed', or "
+                        f"'missing' within 200 chars)"
+                    )
+        else:
+            error(
+                f"[43] {distribute_path_43}: preconditions section does not "
+                f"validate that EVENTS.yaml `custom_events` is a well-formed "
+                f"list before proceeding"
+            )
+    else:
+        error(
+            f"[43] {distribute_path_43}: could not find preconditions section "
+            f"(Step 1) to check custom_events validation"
+        )
 
 # ---------------------------------------------------------------------------
 # Summary

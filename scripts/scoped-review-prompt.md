@@ -74,7 +74,7 @@ After reading: mentally simulate running `/bootstrap` and `/change` with each fi
 - Read `Makefile`
 - Read `.claude/patterns/verify.md`
 
-After reading: trace the user journey from `make validate` → `/bootstrap` → `/change` → `/iterate` → `/retro`.
+After reading: trace the user journey from `make validate` → `/bootstrap` → `/change` → `/verify` → `/distribute` → `/iterate` → `/retro`.
 
 ---
 

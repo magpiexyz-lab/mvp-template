@@ -25,10 +25,12 @@ Follow `.claude/patterns/branch.md`. Branch: `chore/distribute`.
 
 1. Verify `idea/idea.yaml` exists and is complete. If not, stop: "No experiment found. Create `idea/idea.yaml` from the template first, then run `/bootstrap`."
 2. Verify `EVENTS.yaml` exists. If not, stop: "EVENTS.yaml not found. This file defines all analytics events and is required."
-3. Verify `package.json` exists. If not, stop: "No app found. Run `/bootstrap` first to create the app, deploy it, then run `/distribute`."
-4. Verify the app is deployed: check `landing_url` in existing `idea/ads.yaml`, or ask the user for the deployed URL.
-5. Verify the analytics stack is configured: check for a `NEXT_PUBLIC_` analytics key in `.env.example` (the specific key name depends on the analytics stack file — read it to find the client env var). If not found, stop: "Analytics is not configured. Verify `.env.example` contains a `NEXT_PUBLIC_` analytics key, or run `/bootstrap` first to scaffold the app with analytics."
-6. If `idea/ads.yaml` already exists, ask: "An ads config already exists. Generate a new version (v2)?"
+3. Verify `EVENTS.yaml` contains a `custom_events` key that is a list (empty list `[]` is valid). If not, stop: "EVENTS.yaml is malformed — the `custom_events` key is missing or not a list. Run `make validate` to diagnose, or restore the file from the template."
+4. Verify `package.json` exists. If not, stop: "No app found. Run `/bootstrap` first to create the app, deploy it, then run `/distribute`."
+5. Verify the app is deployed: check `landing_url` in existing `idea/ads.yaml`, or ask the user for the deployed URL.
+6. Verify `stack.analytics` is present in idea.yaml. If not, stop: "Analytics is required for distribution tracking. Add `analytics: posthog` (or another provider) to idea.yaml `stack` and run `/bootstrap` first."
+7. Verify the analytics stack is configured: check for a `NEXT_PUBLIC_` analytics key in `.env.example` (the specific key name depends on the analytics stack file — read it to find the client env var). If not found, stop: "Analytics is not configured. Verify `.env.example` contains a `NEXT_PUBLIC_` analytics key, or run `/bootstrap` first to scaffold the app with analytics."
+8. If `idea/ads.yaml` already exists, ask: "An ads config already exists. Generate a new version (v2)?"
 
 ## Step 2: Research keywords
 

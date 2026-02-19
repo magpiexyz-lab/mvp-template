@@ -154,6 +154,8 @@ Present the plan using the format for the classified type:
 DO NOT proceed to Phase 2 until the user explicitly replies with approval.
 If the user requests changes instead of approving, revise the plan to address their feedback and present it again. Repeat until approved.
 
+Save the approved plan: write the plan you presented above to `.claude/current-plan.md`. This file persists the plan across context compression and serves as the reference for verification.
+
 ---
 
 ## Phase 2: Implement (only after the user has approved)
@@ -180,6 +182,7 @@ If the user requests changes instead of approving, revise the plan to address th
 - If database tables are needed: create a migration following the database stack file (next sequential number, `IF NOT EXISTS`), add TypeScript types, add post-merge instructions to PR body. Note: concurrent branches may create conflicting migration numbers — resolve by renumbering the later-merged migration at merge time.
 - **If Multi-layer**: implement in two sub-steps with an intermediate build check:
   - Sub-step 6a — Data and server layer (migrations, types, API routes)
+  - Re-read `.claude/current-plan.md` to confirm sub-step 6a output aligns with the approved plan.
   - Checkpoint: run `npm run build`. Fix errors before proceeding. If still broken after 2 attempts, proceed to Sub-step 6b without retrying — Step 7 (verification) has its own 3-attempt retry budget.
   - Sub-step 6b — Client layer (pages, components, analytics wiring)
 
@@ -205,6 +208,10 @@ If the user requests changes instead of approving, revise the plan to address th
 - Only add custom events the user explicitly approved
 
 #### Test constraints
+- If `playwright.config.ts` already exists (e.g., from bootstrap): do NOT recreate
+  playwright.config.ts, e2e/helpers.ts, or global-setup/teardown files. Only add or
+  modify test cases in `e2e/smoke.spec.ts` (or additional spec files). If
+  `playwright.config.ts` does NOT exist, follow the full setup procedure below.
 - Do NOT modify application code — tests observe the app, they don't change it
 - Install packages per the testing stack file, create config and helpers per the testing stack file templates
 - Test funnel happy path only — skip error states, edge cases, and `retain_return`
@@ -217,13 +224,14 @@ If the user requests changes instead of approving, revise the plan to address th
 
 ### Step 7: Verify
 - Follow the verification procedure in `.claude/patterns/verify.md` (build & lint with retry)
+- Re-read `.claude/current-plan.md` to verify implementation matches the approved plan. Check that every item in the plan has been addressed.
 - Type-specific checks:
   - **Feature**: trace the user flow — can a user discover, use, and complete the feature? Verify all new analytics events fire.
   - **Fix**: trace the bug report's user flow through code to confirm it's fixed.
   - **Polish**: open each changed file and confirm analytics imports and event calls are intact.
   - **Analytics**: re-trace each standard funnel event through the code to confirm it now fires correctly.
   - **Test**: run `npx playwright test --list` to verify test discovery works. If test discovery fails, treat it as a build error — fix the test files and re-run. If still failing after the verify.md retry budget, report to the user with the error output.
-  - **Feature (spec compliance)**: Re-read `idea/idea.yaml`. For each page in `pages`, confirm `src/app/<page-name>/page.tsx` exists. For each feature in `features`, confirm the implementation addresses it. For each event in `EVENTS.yaml`, confirm tracking calls are intact. If anything is missing, fix it before proceeding.
+  - **Feature (spec compliance)**: Re-read `.claude/current-plan.md` and `idea/idea.yaml`. For each page in `pages`, confirm `src/app/<page-name>/page.tsx` exists. For each feature in `features`, confirm the implementation addresses it. For each event in `EVENTS.yaml`, confirm tracking calls are intact. If anything is missing, fix it before proceeding.
 
 ### Step 8: Commit, push, open PR
 - You are already on a feature branch (created in Step 0). Do not create another branch.
@@ -238,6 +246,7 @@ If the user requests changes instead of approving, revise the plan to address th
   - **Checklist — Build**: confirm build passes, no hardcoded secrets
 - Fill in **every** section of the PR template. Empty sections are not acceptable. If a section does not apply, write "N/A" with a one-line reason.
 - If `git push` or `gh pr create` fails: show the error and tell the user to check their GitHub authentication (`gh auth status`) and remote configuration (`git remote -v`), then retry.
+- Delete `.claude/current-plan.md` — the plan is now captured in the PR description.
 
 ## Do NOT
 - Add more than what `$ARGUMENTS` describes — one change per PR

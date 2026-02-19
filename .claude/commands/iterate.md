@@ -177,7 +177,7 @@ If the experiment is near the end of its `measurement_window` or the user is con
 ## Do NOT
 - Write code or modify source files — this skill is analysis only
 - Recommend more than 3 actions — focus is more valuable than breadth
-- Recommend actions outside the defined commands (bootstrap, change, iterate, retro, distribute)
+- Recommend actions outside the defined commands (bootstrap, change, iterate, retro, distribute, verify)
 - Be vague — every recommendation must be specific enough to act on
 - Ignore the data — don't recommend features if the funnel shows a landing page problem
 - Recommend adding features when the real problem is distribution or positioning

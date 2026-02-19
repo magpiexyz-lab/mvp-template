@@ -5,7 +5,7 @@ reads:
   - idea/idea.yaml
   - EVENTS.yaml
   - CLAUDE.md
-stack_categories: [framework, database, auth, analytics, ui, payment, hosting]
+stack_categories: [framework, database, auth, analytics, ui, payment, hosting, testing]
 requires_approval: true
 references:
   - .claude/patterns/verify.md
@@ -29,8 +29,7 @@ DO NOT write any code, create any files, or run any install commands during this
    - Read `CLAUDE.md` — these are the rules to follow
 
 2. **Resolve the stack**
-   - If `testing` is present in idea.yaml `stack`, stop and tell the user: "Testing must be added after the initial bootstrap is merged. Remove `testing:` from your idea.yaml `stack` section, run `/bootstrap`, merge the PR, then run `/change add E2E smoke tests` to add tests."
-   - Read idea.yaml `stack`. For each category present in idea.yaml `stack` (always: framework, analytics, ui, hosting; optional: database, auth, payment), read `.claude/stacks/<category>/<value>.md`. Note: `testing` is deliberately excluded from bootstrap — set it up via `/change add E2E smoke tests` after the initial scaffold is merged.
+   - Read idea.yaml `stack`. For each category present in idea.yaml `stack` (always: framework, analytics, ui, hosting; optional: database, auth, payment, testing), read `.claude/stacks/<category>/<value>.md`.
    - If a stack file doesn't exist for a given value, use your own knowledge of that technology and follow the same structural patterns as existing stack files.
    - These files define packages, library files, env vars, and patterns for each technology.
    - For each stack file read, validate its `assumes` entries: every `category/value` in the file's `assumes` list must match a `category: value` pair in idea.yaml `stack`. If any assumption is unmet, stop and list the incompatibilities (e.g., "analytics/posthog assumes framework/nextjs, but your stack has framework: remix"). The user must either change the mismatched stack value or create a compatible stack file.
@@ -74,6 +73,10 @@ DO NOT write any code, create any files, or run any install commands during this
    - idea.yaml primary_metric: [metric]
    - activate event action value: "[concrete_action]" (e.g., "created_invoice") — or "N/A — all features are descriptive, activate will be omitted" if no feature involves an interactive user action
 
+   **Tests (if stack.testing present):**
+   - Template path: Full templates (all assumes met) | No-Auth Fallback (assumes unmet: [list])
+   - Smoke tests for: [list each page name]
+
    **Questions:**
    - [any ambiguities — or "None"]
    ```
@@ -84,6 +87,8 @@ DO NOT write any code, create any files, or run any install commands during this
    DO NOT proceed to Phase 2 until the user explicitly replies with approval.
    If the user requests changes instead of approving, revise the plan to address their feedback and present it again. Repeat until approved.
 
+7. **Save the approved plan.** Write the plan you presented above to `.claude/current-plan.md`. This file persists the plan across context compression and serves as the reference for checkpoint verification.
+
 ## Phase 2: Implement (only after the user has approved)
 
 ### Step 1: Project initialization
@@ -91,7 +96,7 @@ DO NOT write any code, create any files, or run any install commands during this
 - Install packages from all stack files whose categories are present in idea.yaml `stack`
 - Install dev dependencies from the framework and UI stack files
 - Run the UI setup commands from the UI stack file
-- After UI setup, verify the UI stack file's post-setup checks pass (PostCSS config, globals.css, scripts intact)
+- After UI setup, verify the UI stack file's post-setup checks pass (PostCSS config, globals.css, scripts intact). If any post-setup check fails: stop and tell the user which check failed and how to fix it (e.g., "PostCSS config was overwritten by shadcn init — restore it from the framework stack file template"). Do not proceed to Step 2 until all post-setup checks pass.
 - If any install command fails: stop, show the error, and ask the user to fix the environment issue. After fixing, tell Claude: "Continue the bootstrap on this branch from the install step." Claude will re-run the failed install and any subsequent install commands, then continue with Step 2. Do NOT re-run `/bootstrap` (that would create a duplicate branch). If you close this conversation: either (1) commit partial files on this branch (`git add -A && git commit -m "WIP: partial install"`), then tell Claude "Continue the bootstrap on this branch from the install step"; or (2) switch to main (`git checkout main`), run `make clean`, and start `/bootstrap` fresh.
 
 ### Step 2: Core library files
@@ -101,11 +106,13 @@ DO NOT write any code, create any files, or run any install commands during this
 - If `stack.auth` is present, create auth files from the auth stack file using the correct conditional path:
   - If `stack.database` matches the auth provider (e.g., both `supabase`): auth shares the database client files — only create auth-specific pages (signup, login)
   - If `stack.database` is absent or a different provider: create standalone auth library files from the "Standalone Client" section (e.g., `supabase-auth.ts` instead of `supabase.ts`)
+- If both `stack.auth` and `stack.payment` are present, create auth library files and pages first — payment templates reference `user.id` which requires auth.
 - If `stack.payment` is present, create the payment library files from the payment stack file's "Files to Create" section. Note: the payment stack file's checkout route template intentionally references `user.id` which is undefined until auth is integrated — this will cause a build error at Checkpoint B that you must fix by adding the auth check (see the auth stack file's "Server-Side Auth Check" section). The webhook route template also contains a `// TODO: Update user's payment status in database` — unlike the auth check, this TODO compiles silently, so you must resolve it using the database schema planned in Phase 1.
 - Replace placeholder constants: In BOTH analytics library files (`src/lib/analytics.ts` and `src/lib/analytics-server.ts`), replace `PROJECT_NAME = "TODO"` with the `name` from idea.yaml and `PROJECT_OWNER = "TODO"` with the `owner` from idea.yaml. These constants auto-attach to every event — if left as TODO, experiment filtering will fail.
 - Generate `src/lib/events.ts` with typed track wrapper functions from EVENTS.yaml. For each event, create a function like `trackVisitLanding(props: { referrer?: string; utm_source?: string })` that calls `track("visit_landing", props)`. Only generate wrappers for standard_funnel events and (if stack.payment is present) payment_funnel events. Pages should import from `events.ts` instead of calling `track()` directly with string event names.
 
 ### Checkpoint A — verify library layer
+- Re-read `.claude/current-plan.md` to confirm implementation aligns with the approved plan.
 - Run `npm run build` to verify all library files compile correctly
 - If the build fails: fix the errors in the library files before proceeding. These files are imported by every page — errors here cascade into everything downstream. After fixing, re-run `npm run build` to confirm.
 - If the build still fails after 2 fix attempts, proceed to the next step without retrying further at this checkpoint — Step 8 (final verification in `.claude/patterns/verify.md`) has its own 3-attempt retry budget that will catch any remaining issues.
@@ -132,6 +139,7 @@ For each entry in idea.yaml `pages`:
 > **STOP** — verify analytics before proceeding. Every page must fire its EVENTS.yaml event(s). Every user action listed in EVENTS.yaml must have a tracking call. Do not move to Checkpoint B until each event is wired. "I'll add analytics later" is not acceptable.
 
 ### Checkpoint B — verify pages layer
+- Re-read `.claude/current-plan.md` to confirm implementation aligns with the approved plan.
 - Run `npm run build` to verify all pages compile and their imports from the library files resolve correctly
 - If the build fails: fix the errors in the page files (or in the library files they import from) before proceeding. After fixing, re-run `npm run build` to confirm.
 - If the build still fails after 2 fix attempts, proceed to the next step without retrying further at this checkpoint — Step 8 (final verification in `.claude/patterns/verify.md`) has its own 3-attempt retry budget that will catch any remaining issues.
@@ -156,12 +164,42 @@ If no features require database tables, skip this step.
 ### Step 7: Environment config
 - Generate `.env.example` by combining all environment variables from active stack files (framework, database, analytics, and any others that define env vars)
 
+### Step 7b: Test scaffolding (if stack.testing is present)
+
+If `stack.testing` is present in idea.yaml:
+- Read the testing stack file at `.claude/stacks/testing/<value>.md`
+- Check assumes: for each `category/value` in the testing stack file's `assumes` list, verify
+  it matches idea.yaml `stack`. If all match → use full templates. If any unmet → use No-Auth
+  Fallback templates.
+- Install packages: `npm install -D @playwright/test && npx playwright install chromium`
+- Create files per the chosen template path:
+  - `playwright.config.ts` (full or no-auth)
+  - `e2e/helpers.ts` (full or no-auth)
+  - If full-auth path: `e2e/global-setup.ts` and `e2e/global-teardown.ts`
+- Generate `e2e/smoke.spec.ts` with one page-load test per idea.yaml page:
+  ```ts
+  test("[page name] loads", async ({ page }) => {
+    await page.goto("/[route]");
+    await expect(page).toHaveTitle(/.+/);
+  });
+  ```
+  These are page-load smoke tests only — not full funnel tests with selectors.
+- Add `.gitignore` entries per testing stack file
+- Add `test:e2e` and `test:e2e:ui` scripts to `package.json`
+- If the existing CI e2e job in `.github/workflows/ci.yml` does not match the chosen
+  template path (full-auth vs. no-auth fallback), replace the `e2e:` job with the
+  testing stack file's correct CI Job Template for that path.
+- Add env vars from testing stack file to `.env.example` (based on chosen template path)
+- NOTE: Tests are NOT run during bootstrap — only created
+
+If `stack.testing` is NOT present in idea.yaml: skip this step entirely.
+
 ### Step 8: Verify before shipping
 - Follow the verification procedure in `.claude/patterns/verify.md` (build & lint with retry)
 
 ### Step 8b: Spec compliance check
 
-Re-read `idea/idea.yaml` now. Verify each of these before proceeding to the PR:
+Re-read `.claude/current-plan.md` and `idea/idea.yaml` now. Verify each of these before proceeding to the PR:
 - For each page in `pages`: confirm `src/app/<page-name>/page.tsx` exists (or root page for `landing`)
 - For each feature in `features`: confirm the implementation addresses it
 - For each standard_funnel event in `EVENTS.yaml`: confirm a tracking call exists in the appropriate page
@@ -182,12 +220,13 @@ Re-read `idea/idea.yaml` now. Verify each of these before proceeding to the PR:
 - Add a prominent note at the top of the PR body with post-merge instructions: database setup (from database stack file), environment variable setup (from .env.example)
 - Fill in **every** section of the PR template. Empty sections are not acceptable. If a section does not apply, write "N/A" with a one-line reason.
 - If `git push` or `gh pr create` fails: show the error and tell the user to check their GitHub authentication (`gh auth status`) and remote configuration (`git remote -v`), then retry the push and PR creation.
+- Delete `.claude/current-plan.md` — the plan is now captured in the PR description.
 
 ## Do NOT
 - Add pages not listed in idea.yaml `pages`
 - Add features not listed in idea.yaml `features`
 - Add libraries not in idea.yaml `stack` (small utilities like clsx are fine)
-- Add tests (except per CLAUDE.md Rule 4)
+- Add full funnel tests — bootstrap creates page-load smoke tests only when stack.testing is present; use /change for funnel tests with real selectors
 - Violate the restrictions listed in the framework stack file
 - Add placeholder "lorem ipsum" text — use real copy derived from idea.yaml
 - Skip the build verification step
