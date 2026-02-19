@@ -88,7 +88,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` on every table
 - RLS policies: `auth.uid() = user_id`
 - Add SQL comments explaining each table's purpose
-- The user runs each migration manually in **Supabase Dashboard -> SQL Editor**
+- Migrations are applied automatically by CI on merge to `main` (via `supabase db push`). For manual use: `make migrate`. Fallback: copy SQL into Supabase Dashboard -> SQL Editor.
 
 ## Local Development (when `stack.testing` is present)
 
@@ -98,6 +98,26 @@ When the project has `stack.testing` configured, E2E tests run against a **local
 - `supabase start` starts local Postgres + Auth + API (requires Docker Desktop)
 - `supabase db reset` applies all migrations from `supabase/migrations/`
 - `supabase stop` shuts down the local instance
+
+## Remote Migration (Production)
+
+Migrations are pushed to the remote Supabase database using `supabase db push`. This happens automatically in CI on merge to `main`, or manually via `make migrate`.
+
+### One-time setup (local `make migrate`)
+1. Run `npx supabase login` to authenticate the CLI
+2. Run `npx supabase link --project-ref <ref>` to link to your remote project
+   - Find your project ref: Supabase Dashboard → Settings → General → Reference ID
+3. Set `SUPABASE_DB_PASSWORD` in your shell: `export SUPABASE_DB_PASSWORD=your-password`
+   - Find it: Supabase Dashboard → Settings → Database → Database password
+4. Run `make migrate`
+
+### One-time setup (CI auto-migration)
+Add three GitHub repository secrets (repo → Settings → Secrets and variables → Actions):
+| Secret | Where to find it |
+|--------|-----------------|
+| `SUPABASE_PROJECT_REF` | Supabase Dashboard → Settings → General → Reference ID |
+| `SUPABASE_DB_PASSWORD` | Supabase Dashboard → Settings → Database → Database password |
+| `SUPABASE_ACCESS_TOKEN` | [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) → Generate new token |
 
 ### Deterministic local keys
 
@@ -121,4 +141,4 @@ These keys are hardcoded in the local Supabase instance and are safe to commit i
 - When creating a new migration, use the next sequential number after existing migrations. Note: concurrent branches may create conflicting numbers (e.g., two branches both create `002_*.sql`) — resolve by renumbering the later-merged migration at merge time. This is acceptable for MVP workflows.
 
 ## PR Instructions
-- When creating migrations, add to the PR body: "After merging, run `supabase/migrations/<filename>.sql` in your Supabase Dashboard -> SQL Editor"
+- When creating migrations, add to the PR body: "After merging, CI will automatically apply `supabase/migrations/<filename>.sql` to the remote database. If CI migration secrets are not configured, run `make migrate` or apply the SQL manually in Supabase Dashboard -> SQL Editor."

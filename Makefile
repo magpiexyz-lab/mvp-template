@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help validate distribute test-e2e deploy clean clean-all supabase-start supabase-stop
+.PHONY: help validate distribute test-e2e deploy migrate clean clean-all supabase-start supabase-stop
 
 help: ## Show this help message
 	@echo "Usage: make <command>"
@@ -150,6 +150,23 @@ deploy: ## Deploy to Vercel (first run will prompt to link project)
 	else \
 		echo "Warning: Could not verify health endpoint. Check your deployment manually."; \
 	fi
+
+migrate: ## Push pending migrations to remote Supabase database
+	@if [ ! -f package.json ]; then \
+		echo "Error: No package.json found. Run /bootstrap first."; \
+		exit 1; \
+	fi
+	@if [ ! -d supabase/migrations ]; then \
+		echo "Error: supabase/migrations/ not found. No migrations to push."; \
+		exit 1; \
+	fi
+	@if [ -z "$$(ls -A supabase/migrations/ 2>/dev/null)" ]; then \
+		echo "No migration files in supabase/migrations/. Nothing to push."; \
+		exit 0; \
+	fi
+	@echo "Pushing migrations to remote Supabase..."
+	npx supabase db push
+	@echo "Migrations applied successfully."
 
 # Default: Next.js + shadcn artifacts. Update if you change stack.framework or stack.ui.
 clean: ## Remove generated files (lets you re-run bootstrap)

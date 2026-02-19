@@ -179,7 +179,7 @@ Save the approved plan: write the plan you presented above to `.claude/current-p
 > **STOP** — verify analytics before proceeding. Every new page must fire its events from EVENTS.yaml. Every user action in the new feature must have a tracking call. Do not proceed until confirmed. "I'll add analytics later" is not acceptable.
 
 - Create or modify API routes for any new mutations (see framework stack file for route conventions). Every API route: validate input with zod, return proper HTTP status codes. If `stack.database` is present, use the server-side database client for data access.
-- If database tables are needed: create a migration following the database stack file (next sequential number, `IF NOT EXISTS`), add TypeScript types, add post-merge instructions to PR body. Note: concurrent branches may create conflicting migration numbers — resolve by renumbering the later-merged migration at merge time.
+- If database tables are needed: create a migration following the database stack file (next sequential number, `IF NOT EXISTS`), add TypeScript types, add post-merge instructions to PR body (CI auto-applies migrations on merge; otherwise `make migrate` or Supabase Dashboard). Note: concurrent branches may create conflicting migration numbers — resolve by renumbering the later-merged migration at merge time.
 - **If Multi-layer**: implement in two sub-steps with an intermediate build check:
   - Sub-step 6a — Data and server layer (migrations, types, API routes)
   - Re-read `.claude/current-plan.md` to confirm sub-step 6a output aligns with the approved plan.
