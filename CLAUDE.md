@@ -10,7 +10,7 @@ Rules are in priority order. When two rules conflict, the lower-numbered rule wi
 - If a page isn't listed in `pages`, don't create it
 - If you're unsure whether something is in scope, it isn't
 - To add a new feature, use the /change skill — it updates idea.yaml first, then implements
-- When asked to do something outside a defined skill (/bootstrap, /change, /iterate, /retro, /distribute), ask the user to clarify before proceeding
+- When asked to do something outside a defined skill (/bootstrap, /change, /iterate, /retro, /distribute, /verify), ask the user to clarify before proceeding
 
 ## Rule 1: PR-First Workflow
 - Never commit directly to `main`
@@ -39,7 +39,7 @@ Rules are in priority order. When two rules conflict, the lower-numbered rule wi
 
 ## Rule 4: Keep It Minimal
 - Prefer well-known libraries over custom code
-- No tests except for auth and payment flows and E2E smoke tests (`/change add E2E smoke tests`). Exception: if a feature contains non-trivial business logic (calculations, state machines, multi-step workflows), add unit tests for that logic. This is rare in first MVPs — if you're writing complex algorithms, consider whether you're overbuilding.
+- Bootstrap creates page-load smoke tests when `stack.testing` is present. Use `/change` for full funnel tests and `/verify` to run tests and fix failures. No additional tests except for auth and payment flows. Exception: if a feature contains non-trivial business logic (calculations, state machines, multi-step workflows), add unit tests for that logic. This is rare in first MVPs — if you're writing complex algorithms, consider whether you're overbuilding.
 - No abstraction layers unless there's concrete duplication (3+ copies)
 - Ship the simplest thing that works
 - No premature optimization — no caching, no memoization, no lazy loading unless there's a measured problem

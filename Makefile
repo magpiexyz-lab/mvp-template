@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help validate distribute test-e2e dev test deploy clean clean-all
+.PHONY: help validate distribute test-e2e deploy clean clean-all
 
 help: ## Show this help message
 	@echo "Usage: make <command>"
@@ -18,6 +18,7 @@ help: ## Show this help message
 	@echo "  /iterate         Review metrics and get recommendations"
 	@echo "  /retro           Run a retrospective and file feedback"
 	@echo "  /distribute      Generate Google Ads config from idea.yaml"
+	@echo "  /verify          Run E2E tests and fix failures"
 
 validate: ## Check idea.yaml for valid YAML, TODOs, name format, and landing page
 	@echo "Validating idea/idea.yaml..."
@@ -88,15 +89,6 @@ validate: ## Check idea.yaml for valid YAML, TODOs, name format, and landing pag
 	sys.exit(2) if warnings else sys.exit(0); \
 	" || STACK_WARN=$$?; \
 	if [ "$$STACK_WARN" -ne 0 ] && [ "$$STACK_WARN" -ne 2 ]; then exit 1; fi; \
-	python3 -c "\
-	import yaml, sys; \
-	data = yaml.safe_load(open('idea/idea.yaml')); \
-	stack = data.get('stack', {}); \
-	if 'testing' in stack: \
-	    print('  Warning: stack.testing is set but /bootstrap will reject it.'); \
-	    print('  Testing must be added after the initial bootstrap PR is merged.'); \
-	    print(\"  Remove 'testing:' now, or add it later with '/change add E2E smoke tests'.\"); \
-	"; \
 	python3 -c "\
 	import yaml, re, os, sys; \
 	data = yaml.safe_load(open('idea/idea.yaml')); \
@@ -196,21 +188,7 @@ test-e2e: ## Run Playwright E2E tests
 	@if [ -f playwright.config.ts ]; then \
 		npx playwright test; \
 	else \
-		echo "No playwright.config.ts found — open Claude Code and run '/change add E2E smoke tests' first"; \
-	fi
-
-dev: ## Start the local development server
-	@if [ ! -f package.json ]; then \
-		echo "Error: No package.json found. Run /bootstrap first."; \
-		exit 1; \
-	fi
-	npm run dev
-
-test: ## Run tests (skips if no test script)
-	@if [ -f package.json ] && node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)" 2>/dev/null; then \
-		npm test; \
-	else \
-		echo "No test script found — skipping"; \
+		echo "No playwright.config.ts found — add 'testing: playwright' to idea.yaml stack and re-run /bootstrap, or run '/change add E2E smoke tests'"; \
 	fi
 
 # Default: Vercel. Update this target if you change stack.hosting.

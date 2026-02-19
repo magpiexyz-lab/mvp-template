@@ -1,9 +1,9 @@
 # Check Inventory
 
 Scannable reference listing all automated checks by name, grouped by validator.
-62 active checks consolidated into 58 inventory rows.
+64 active checks consolidated into 60 inventory rows.
 
-Last updated: 2026-02-16
+Last updated: 2026-02-19
 
 ## Validation philosophy
 
@@ -73,6 +73,8 @@ better enforced by the scoped LLM review (`scripts/scoped-review-prompt.md`).
 | Verify ads.yaml campaign_name matches idea.yaml name | `campaign_name` in ads.yaml must start with idea.yaml `name` |
 | Verify distribute skill prose event names | distribute.md must contain a YAML code block defining the `feedback_submitted` event (added to EVENTS.yaml `custom_events` during Step 7c) |
 | Verify distribute skill docs reference exists | If distribute.md contains a backtick-wrapped reference to `docs/google-ads-setup.md`, that file must exist on disk |
+| Verify distribute skill validates analytics stack in idea.yaml | distribute.md preconditions section (Step 1) must validate that `stack.analytics` is present in idea.yaml before proceeding |
+| Verify distribute skill validates EVENTS.yaml custom_events structure | distribute.md preconditions section (Step 1) must reference `custom_events` near a stop/validation context (`stop`, `list`, `malformed`, or `missing` within 200 chars) |
 
 ## consistency-check.sh
 

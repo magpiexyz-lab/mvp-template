@@ -67,4 +67,4 @@ stack:
   analytics: posthog
   ui: shadcn
   payment: stripe
-  # testing: playwright  # Uncomment for E2E smoke tests
+  testing: playwright     # Page-load smoke tests — created by bootstrap

@@ -107,8 +107,6 @@ Run `make` to see all available utility commands:
 |---------|-------------|
 | `make validate` | Check idea.yaml for valid YAML, TODOs, name format, and landing page |
 | `make test-e2e` | Run Playwright E2E tests |
-| `make dev` | Start the local development server |
-| `make test` | Run tests |
 | `make deploy` | Deploy to Vercel |
 | `make clean` | Remove generated files (lets you re-run bootstrap) |
 | `make clean-all` | Remove everything including migrations (full reset) |
