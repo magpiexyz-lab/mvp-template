@@ -23,6 +23,12 @@ gitignore: [.vercel/]
 npx vercel deploy --prod
 ```
 
+## Auto-Deploy on Merge
+- Vercel's GitHub integration auto-deploys to production on every push/merge to `main`
+- Preview deployments are created automatically on PRs (used by `preview-smoke` CI job)
+- `make deploy` remains available for manual CLI deploys and first-time project linking
+- Skills should not include `make deploy` as a required iteration step — merging to `main` is sufficient
+
 ## Health Check
 
 ### `src/app/api/health/route.ts` — Deployment health endpoint
@@ -72,8 +78,9 @@ For auth and payment API routes:
 - Mention this limitation in the PR body so the user knows to address it before production
 
 ## Patterns
-- Deploy with `npx vercel deploy --prod` for production deployments
-- After `make deploy`, the health endpoint is automatically checked
+- Vercel auto-deploys to production when PRs are merged to `main` (requires GitHub integration)
+- Deploy with `npx vercel deploy --prod` for manual production deployments
+- After manual `make deploy`, the health endpoint is automatically checked
 - Use Vercel's preview deployments (automatic on PRs) for testing before production
 - Preview deployments are smoke-tested in CI before merge
 - Client-side environment variables must use the `NEXT_PUBLIC_` prefix

@@ -7,14 +7,14 @@ A template repository for running parallel MVP experiments. Fill in your idea, r
 ## How It Works
 
 ```
-1. Fill in idea.yaml  →  /bootstrap  →  Review & merge PR  →  Deploy
+1. Fill in idea.yaml  →  /bootstrap  →  Review & merge PR  →  Deploy (first time)
                                                                   ↓
                                                            Share with users
                                                                   ↓
 4. Act on recommendations  ←  3. /iterate  ←  2. Check analytics dashboards
    (/change ...)               (analysis only — no PR)
            ↓
-   Review & merge PR  →  Deploy  →  Repeat
+   Review & merge PR  →  Auto-deployed  →  Repeat
 ```
 
 Every skill except `/iterate` and `/retro` creates a branch, does the work, and opens a PR for you to review and merge. `/iterate` and `/retro` are analysis-only — they don't create branches or PRs. AI skills are invoked directly in Claude Code (not through `make`).
@@ -58,11 +58,11 @@ The key fields:
 - **features**: up to ~5 capabilities
 - **primary_metric**: the one number that tells you if this worked
 
-### 3. Commit your idea, then validate and bootstrap
+### 3. Validate your idea, commit, and bootstrap
 
 ```bash
-git add idea/idea.yaml && git commit -m "Fill in idea.yaml"
 make validate    # Check for any unfilled TODOs
+git add idea/idea.yaml && git commit -m "Fill in idea.yaml"
 ```
 
 Then open Claude Code and run `/bootstrap` to generate the full MVP. Claude will:
@@ -120,13 +120,9 @@ make supabase-stop
 
 ### 7. Deploy to production
 
-```bash
-make deploy
-```
+**Recommended:** Import your repo at [vercel.com/new](https://vercel.com/new) to connect the Vercel GitHub integration. Once connected, Vercel auto-deploys to production every time you merge a PR to `main` — no manual deploy step needed.
 
-First deploy will prompt you to link the repo to a Vercel project — follow the CLI prompts. After linking, future deploys work automatically.
-
-`make deploy` automatically checks the health endpoint (`/api/health`) after deploy to verify the deployment is working.
+> **Tip:** You can also deploy manually with `make deploy`. The first CLI deploy will prompt you to link the repo to a Vercel project. `make deploy` automatically checks the health endpoint (`/api/health`) after deploy.
 
 ## Commands
 
@@ -138,7 +134,7 @@ Run `make` to see all available utility commands:
 | `make supabase-start` | Start local Supabase for testing (requires Docker) |
 | `make supabase-stop` | Stop local Supabase |
 | `make test-e2e` | Run Playwright E2E tests |
-| `make deploy` | Deploy to Vercel |
+| `make deploy` | Deploy to Vercel (first-time setup or manual deploys) |
 | `make clean` | Remove generated files (lets you re-run bootstrap) |
 | `make clean-all` | Remove everything including migrations (full reset) |
 
@@ -157,13 +153,13 @@ After bootstrap, the typical workflow is:
 
 > **Note:** The commands below assume the default stack. If you've changed your stack, some steps (e.g., deploy target, database setup) will differ — check your stack files in `.claude/stacks/` for details.
 
-1. **Deploy and share** — `make deploy`, send to target users
+1. **Share with users** — your app is live after merging the bootstrap PR (auto-deployed by Vercel)
 2. **Collect data** — wait a few days, check your analytics dashboards
 3. **Review progress** — `/iterate` to analyze your funnel and get recommendations (this is analysis-only — it does not create a branch or PR)
 4. **Act on recommendations** — run the suggested skill:
    - `/change ...` to add a feature, fix a bug, polish UI, fix analytics, or add tests
-5. **Review and merge PRs** — each skill opens a PR for you to review
-6. **Repeat** — deploy, measure, iterate until you hit `target_value` or `measurement_window` ends
+5. **Review and merge PRs** — each skill opens a PR for you to review; merging auto-deploys to production
+6. **Repeat** — measure, iterate until you hit `target_value` or `measurement_window` ends
 7. **Retrospective** — when the experiment ends, run `/retro` to generate structured feedback and file it on the template repo
 
 ## Retrospectives
