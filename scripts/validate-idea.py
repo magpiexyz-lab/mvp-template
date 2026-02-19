@@ -67,12 +67,6 @@ if stack_warnings:
     )
     warnings = True
 
-# --- Testing in stack warning ---
-if "testing" in stack:
-    print("  Warning: stack.testing is set but /bootstrap will reject it.")
-    print("  Testing must be added after the initial bootstrap PR is merged.")
-    print("  Remove 'testing:' now, or add it later with '/change add E2E smoke tests'.")
-
 # --- Stack assumes consistency ---
 assumes_warnings = []
 for cat, val in stack.items():
