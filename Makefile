@@ -48,100 +48,12 @@ validate: ## Check idea.yaml for valid YAML, TODOs, name format, and landing pag
 		echo "Replace every TODO before running make bootstrap."; \
 		exit 1; \
 	fi
-	@python3 -c "\
-	import yaml, re, sys; \
-	data = yaml.safe_load(open('idea/idea.yaml')); \
-	name = data.get('name', ''); \
-	if not re.match(r'^[a-z][a-z0-9-]*$$', name): \
-	    print(f'Error: name \"{name}\" must be lowercase, start with a letter, and use only a-z, 0-9, hyphens.'); \
-	    print('Example: my-experiment-1'); \
-	    sys.exit(1); \
-	"
-	@python3 -c "\
-	import yaml, sys; \
-	data = yaml.safe_load(open('idea/idea.yaml')); \
-	pages = data.get('pages', []); \
-	if not any(p.get('name') == 'landing' for p in pages): \
-	    print('Error: pages must include an entry with name: landing'); \
-	    print('Add a landing page to the pages list in idea.yaml.'); \
-	    sys.exit(1); \
-	"
-	@python3 -c "\
-	import yaml, sys; \
-	data = yaml.safe_load(open('idea/idea.yaml')); \
-	required = ['name','title','owner','problem','solution','target_user','distribution','pages','features','primary_metric','target_value','measurement_window','stack']; \
-	missing = [f for f in required if not data.get(f)]; \
-	if missing: \
-	    print('Error: these required fields are missing or empty: ' + ', '.join(missing)); \
-	    sys.exit(1); \
-	if not data.get('template_repo'): \
-	    print('  Warning: template_repo not set. /retro will ask where to file the retrospective.'); \
-	"
+	@# validate-idea.py checks: name format, landing page, required fields, stack files, testing warning, assumes
 	@STACK_WARN=0; \
-	python3 -c "\
-	import yaml, os, sys; \
-	data = yaml.safe_load(open('idea/idea.yaml')); \
-	stack = data.get('stack', {}); \
-	warnings = [f'stack.{k}: {v} — no file at .claude/stacks/{k}/{v}.md' for k, v in stack.items() if not os.path.isfile(f'.claude/stacks/{k}/{v}.md')]; \
-	[print(f'  Warning: {w}') for w in warnings]; \
-	print('  Claude will use general knowledge for these. To fix: create the stack file or change the value.') if warnings else None; \
-	sys.exit(2) if warnings else sys.exit(0); \
-	" || STACK_WARN=$$?; \
+	python3 scripts/validate-idea.py || STACK_WARN=$$?; \
 	if [ "$$STACK_WARN" -ne 0 ] && [ "$$STACK_WARN" -ne 2 ]; then exit 1; fi; \
-	python3 -c "\
-	import yaml, sys; \
-	data = yaml.safe_load(open('idea/idea.yaml')); \
-	stack = data.get('stack', {}); \
-	if 'testing' in stack: \
-	    print('  Warning: stack.testing is set but /bootstrap will reject it.'); \
-	    print('  Testing must be added after the initial bootstrap PR is merged.'); \
-	    print(\"  Remove 'testing:' now, or add it later with '/change add E2E smoke tests'.\"); \
-	"; \
-	python3 -c "\
-	import yaml, re, os, sys; \
-	data = yaml.safe_load(open('idea/idea.yaml')); \
-	stack = data.get('stack', {}); \
-	warnings = []; \
-	for cat, val in stack.items(): \
-	    sf = f'.claude/stacks/{cat}/{val}.md'; \
-	    if not os.path.isfile(sf): continue; \
-	    with open(sf) as f: content = f.read(); \
-	    m = re.match(r'^---\n(.*?\n)---', content, re.DOTALL); \
-	    if not m: continue; \
-	    fm = yaml.safe_load(m.group(1)) or {}; \
-	    for assume in (fm.get('assumes') or []): \
-	        parts = assume.split('/'); \
-	        if len(parts) != 2: continue; \
-	        a_cat, a_val = parts; \
-	        actual = stack.get(a_cat); \
-	        if actual is None: \
-	            warnings.append(f'stack.{cat}/{val} assumes {assume}, but stack.{a_cat} is not set'); \
-	        elif actual != a_val: \
-	            warnings.append(f'stack.{cat}/{val} assumes {assume}, but stack.{a_cat} is {actual}'); \
-	if warnings: \
-	    print('  Warning: stack assumes mismatches:'); \
-	    [print(f'    - {w}') for w in warnings]; \
-	    print('  /bootstrap will reject these. Fix idea.yaml stack values or create compatible stack files.'); \
-	"; \
 	if [ -f EVENTS.yaml ]; then \
-		python3 -c "\
-		import yaml, sys; \
-		data = yaml.safe_load(open('EVENTS.yaml')); \
-		errors = []; \
-		if not data: errors.append('EVENTS.yaml is empty'); \
-		else: \
-		    for key in ['standard_funnel', 'custom_events']: \
-		        if key not in data: errors.append(f'missing required key \"{key}\"'); \
-		    for section in ['standard_funnel', 'payment_funnel']: \
-		        if section in data and data[section]: \
-		            for i, ev in enumerate(data[section]): \
-		                if 'event' not in ev: errors.append(f'{section}[{i}] missing \"event\"'); \
-		                if 'trigger' not in ev: errors.append(f'{section}[{i}] missing \"trigger\"'); \
-		if errors: \
-		    print('EVENTS.yaml issues:'); \
-		    [print(f'  - {e}') for e in errors]; \
-		    sys.exit(1); \
-		" || exit 1; \
+		python3 scripts/validate-events.py || exit 1; \
 		echo "EVENTS.yaml looks good — valid structure."; \
 	else \
 		echo "Warning: EVENTS.yaml not found — /bootstrap will fail. Ensure EVENTS.yaml exists in the repo root."; \
