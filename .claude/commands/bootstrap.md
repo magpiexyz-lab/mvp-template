@@ -214,7 +214,7 @@ Re-read `.claude/current-plan.md` and `idea/idea.yaml` now. Verify each of these
 - Stage all new files and commit: "Bootstrap MVP scaffold from idea.yaml"
 - Push and open PR using the `.github/PULL_REQUEST_TEMPLATE.md` format:
   - **Summary**: plain-English explanation — "Full MVP scaffold generated from idea.yaml" with key highlights
-  - **How to Test**: "After merging: 1) [If database migrations were created: run the migration SQL — see post-merge instructions below.] Copy .env.example to .env.local and fill in keys, 2) Add the same env vars to Vercel (Project → Settings → Environment Variables), 3) Run `npm run dev` and visit each page locally, 4) Run `/verify` in Claude Code to run E2E tests locally, 5) Run `make deploy` to deploy to production"
+  - **How to Test**: "After merging: 1) [If database migrations were created: run the migration SQL — see post-merge instructions below.] Copy .env.example to .env.local and fill in keys, 2) Add the same env vars to Vercel (Project → Settings → Environment Variables), 3) Run `npm run dev` and visit each page locally, 4) Run `/verify` in Claude Code to run E2E tests locally, 5) Deploy to production: import your repo at vercel.com/new (first time) or merge to `main` (auto-deploys)"
   - **What Changed**: list every file created and its purpose
   - **Why**: reference the idea.yaml problem/solution
   - **Checklist — Scope**: check all boxes (only built what's in idea.yaml)
