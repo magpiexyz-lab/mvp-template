@@ -22,6 +22,13 @@ gitignore: [/test-results/, /playwright-report/, /blob-report/, /e2e/.auth.json]
 > Used when idea.yaml has `stack.testing: playwright` or when the `/change` skill is invoked for test changes
 > Assumes: `database/supabase` and `auth/supabase` (test user lifecycle uses Supabase Admin API), `analytics/posthog` (`blockAnalytics` route pattern targets PostHog)
 
+## Prerequisites (Full-Auth Path Only)
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — required for `supabase start`
+- Supabase CLI — installed as npm dev dependency (`npm install -D supabase`), no global install needed
+
+These are NOT required for the No-Auth Fallback path.
+
 ## Packages
 ```bash
 npm install -D @playwright/test
@@ -57,11 +64,17 @@ export default defineConfig({
     command: "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
+    env: {
+      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
+    },
   },
 });
 ```
 - Single project (chromium) — cross-browser is out of scope per Rule 4
 - `webServer` starts `npm run dev` automatically and waits for the app
+- `webServer.env` passes local Supabase env vars to the dev server — the user's `.env.local` (pointing to remote Supabase) is untouched
 - Serial execution (`fullyParallel: false`, `workers: 1`) since funnel tests depend on order
 - 1 retry in CI to handle flakiness, 0 locally for fast feedback
 
@@ -71,15 +84,14 @@ import { createClient } from "@supabase/supabase-js";
 import { writeFileSync } from "fs";
 import path from "path";
 
+const SUPABASE_URL = "http://127.0.0.1:54321";
+const SERVICE_ROLE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
+
 const AUTH_FILE = path.join(__dirname, ".auth.json");
 
 export default async function globalSetup() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-  }
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const email = `e2e-${Date.now()}@test.example`;
   const password = "test-password-e2e-123";
   const { data, error } = await supabase.auth.admin.createUser({
@@ -91,6 +103,7 @@ export default async function globalSetup() {
   writeFileSync(AUTH_FILE, JSON.stringify({ email, password, userId: data.user.id }));
 }
 ```
+- Uses deterministic local Supabase keys — no env vars needed
 - Uses `supabase.auth.admin.createUser` with `email_confirm: true` to bypass email verification
 - Writes credentials to `e2e/.auth.json` for tests to read
 - Email pattern `e2e-{timestamp}@test.example` avoids collisions
@@ -101,15 +114,16 @@ import { createClient } from "@supabase/supabase-js";
 import { readFileSync, unlinkSync } from "fs";
 import path from "path";
 
+const SUPABASE_URL = "http://127.0.0.1:54321";
+const SERVICE_ROLE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
+
 const AUTH_FILE = path.join(__dirname, ".auth.json");
 
 export default async function globalTeardown() {
   try {
     const { userId } = JSON.parse(readFileSync(AUTH_FILE, "utf-8"));
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
     await supabase.auth.admin.deleteUser(userId);
     unlinkSync(AUTH_FILE);
   } catch {
@@ -117,6 +131,7 @@ export default async function globalTeardown() {
   }
 }
 ```
+- Uses deterministic local Supabase keys — same as global-setup.ts
 - Reads user ID from `.auth.json`, deletes via admin API, removes the file
 - Swallows all errors so teardown never fails the test run
 
@@ -176,11 +191,12 @@ test.describe.serial("Funnel smoke test", () => {
 
 ## Environment Variables
 ```
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # Required for test user lifecycle (server-only, never NEXT_PUBLIC_)
-E2E_BASE_URL=http://localhost:3000               # Optional, defaults to localhost:3000
+E2E_BASE_URL=http://localhost:3000  # Optional, defaults to localhost:3000
 ```
 
-**When using the No-Auth Fallback:** the auth-specific service role key is not needed. Only the base URL (optional, defaults to localhost:3000) applies.
+Full-Auth path uses deterministic local Supabase keys hardcoded in test templates — no env vars needed for database or auth.
+
+**When using the No-Auth Fallback:** same as above — only the optional base URL applies.
 
 ## .gitignore Additions
 ```
@@ -206,11 +222,8 @@ Add this job to `.github/workflows/ci.yml` after the `build` job:
     needs: build
     if: hashFiles('playwright.config.ts') != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
       NEXT_PUBLIC_POSTHOG_KEY: phc_placeholder
       NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
       # Payment stack (if stack.payment is present in idea.yaml):
@@ -223,30 +236,26 @@ Add this job to `.github/workflows/ci.yml` after the `build` job:
         with:
           node-version-file: '.nvmrc'
           cache: npm
-      - name: Check for test secrets
-        id: check-secrets
-        run: |
-          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "E2E secrets not configured — skipping"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+      - uses: supabase/setup-cli@v1
+      - name: Start local Supabase
+        run: supabase start -x realtime,storage,imgproxy,inbucket,pgadmin-schema-diff,migra,postgres-meta,studio,edge-runtime,logflare,pgbouncer,vector
+      - name: Apply migrations
+        run: supabase db reset
       - name: Install dependencies
-        if: steps.check-secrets.outputs.skip != 'true'
         run: npm ci
       - name: Install Playwright browsers
-        if: steps.check-secrets.outputs.skip != 'true'
         run: npx playwright install chromium --with-deps
       - name: Run E2E tests
-        if: steps.check-secrets.outputs.skip != 'true'
         run: npx playwright test
       - uses: actions/upload-artifact@v4
-        if: steps.check-secrets.outputs.skip != 'true' && !cancelled()
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+      - name: Stop local Supabase
+        if: ${{ always() }}
+        run: supabase stop
 ```
 
 ## No-Auth Fallback
@@ -317,7 +326,7 @@ test.describe.serial("Funnel smoke test", () => {
 - The /change skill adds tests for the app's specific funnel steps
 
 ### No-Auth CI Job Template
-When using the No-Auth Fallback path, use this CI template instead of the full-auth version above. It omits the `SUPABASE_SERVICE_ROLE_KEY` check and Supabase env vars, running tests unconditionally when `playwright.config.ts` exists.
+When using the No-Auth Fallback path, use this CI template instead of the full-auth version above. It omits the local Supabase lifecycle (no Docker, no `supabase start/stop`), running tests unconditionally when `playwright.config.ts` exists.
 ```yaml
   e2e:
     needs: build
@@ -355,6 +364,50 @@ When using the No-Auth Fallback path, use this CI template instead of the full-a
           retention-days: 7
 ```
 
+## Preview Smoke CI Job Template
+Add this job to `.github/workflows/ci.yml` after the `e2e` job. It runs page-load smoke tests against Vercel preview deployments on PRs — no auth, no database writes, no Docker required.
+```yaml
+  preview-smoke:
+    needs: build
+    if: github.event_name == 'pull_request' && hashFiles('playwright.config.ts') != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      NEXT_PUBLIC_POSTHOG_KEY: phc_placeholder
+      NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - name: Wait for Vercel preview
+        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
+        id: preview
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          max_timeout: 300
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+      - name: Smoke test preview deployment
+        run: npx playwright test e2e/smoke.spec.ts --global-setup="" --global-teardown=""
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: preview-smoke-report
+          path: playwright-report/
+          retention-days: 7
+```
+- PR-only: `github.event_name == 'pull_request'` since pushes to main don't create preview deployments
+- `--global-setup="" --global-teardown=""` disables auth setup for preview smoke (no local Supabase available)
+- `E2E_BASE_URL` overrides the default localhost base URL with the Vercel preview URL
+- Uses `patrickedqvist/wait-for-vercel-preview@v1.3.2` (well-maintained, 300+ stars) to wait for the preview deployment
+- Timeout: 5 minutes (preview deploys are fast, smoke tests are page-load only)
+
 ## Patterns
 - **Serial tests for funnel**: use `test.describe.serial` — funnel steps depend on each other (signup before activation, activation before payment)
 - **Block analytics**: always call `blockAnalytics(page)` in `beforeEach` — tests should not pollute analytics data
@@ -365,18 +418,17 @@ When using the No-Auth Fallback path, use this CI template instead of the full-a
 - **Real selectors from app code**: the /change skill reads actual page components to determine selectors — never guess
 
 ## Security
-- `SUPABASE_SERVICE_ROLE_KEY` is server-only — never prefix with `NEXT_PUBLIC_`
+- Local Supabase keys are deterministic and well-known — safe to commit in test config, only work against the local instance
+- Production Supabase keys are never used in tests
 - `e2e/.auth.json` is gitignored — contains test credentials that should not be committed
 - Test users are created and deleted per run — no persistent test accounts
 
 ## PR Instructions
-- Add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` (get from Supabase Dashboard → Settings → API → `service_role` key)
+- Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) if not already installed
+- Start local Supabase: `make supabase-start` (or `npx supabase start -x realtime,storage,imgproxy,inbucket,pgadmin-schema-diff,migra,postgres-meta,studio,edge-runtime,logflare,pgbouncer,vector && npx supabase db reset`)
 - Run `npm run test:e2e` locally to verify tests pass
-- For CI: add these secrets to GitHub repo settings (Settings → Secrets and variables → Actions):
-  - `E2E_SUPABASE_URL` — your Supabase project URL
-  - `E2E_SUPABASE_ANON_KEY` — your Supabase anon key
-  - `E2E_SUPABASE_SERVICE_ROLE_KEY` — your Supabase service role key
-- If `stack.payment` is present: also add Stripe CI secrets (`E2E_STRIPE_SECRET_KEY`, `E2E_STRIPE_PUBLISHABLE_KEY`, `E2E_STRIPE_WEBHOOK_SECRET`)
-- CI E2E job runs only when `playwright.config.ts` exists and secrets are configured — zero friction for repos without E2E
+- Stop local Supabase: `make supabase-stop` (or `npx supabase stop`)
+- No CI secrets needed for database/auth E2E — CI starts local Supabase automatically
+- If `stack.payment` is present: add Stripe CI secrets (`E2E_STRIPE_SECRET_KEY`, `E2E_STRIPE_PUBLISHABLE_KEY`, `E2E_STRIPE_WEBHOOK_SECRET`) to GitHub repo settings (Settings → Secrets and variables → Actions)
 
-**When using the No-Auth Fallback path:** CI secrets are not required — tests run unconditionally. Just run `npm run test:e2e` locally to verify.
+**When using the No-Auth Fallback path:** Docker and local Supabase are not required — tests run unconditionally. Just run `npm run test:e2e` locally to verify.

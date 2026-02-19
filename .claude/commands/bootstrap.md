@@ -146,6 +146,7 @@ For each entry in idea.yaml `pages`:
 
 ### Step 5: API routes
 - Create the API routes directory per the framework stack file
+- Create `/api/health` endpoint per the hosting stack file's Health Check template. Add service-specific checks based on active stack: database connectivity check when `stack.database` is present, auth service check when `stack.auth` is present.
 - If idea.yaml features imply mutations (creating records, payments, etc.), create corresponding API route handlers. If `stack.payment` is present: for payment routes, use the templates from the payment stack file's "API Routes" section — these include auth-integration checks and webhook signature verification patterns that must not be omitted.
 - For the webhook handler's `// TODO: Update user's payment status in database` comment: resolve it using the database schema you planned in Phase 1. If no payments/subscriptions table was planned, add one to the migration in Step 6 and return here to wire the webhook update after the table exists.
 - Every API route: validate input with zod, return proper HTTP status codes. If `stack.database` is present, use the server-side database client for data access.
@@ -172,6 +173,8 @@ If `stack.testing` is present in idea.yaml:
   it matches idea.yaml `stack`. If all match → use full templates. If any unmet → use No-Auth
   Fallback templates.
 - Install packages: `npm install -D @playwright/test && npx playwright install chromium`
+- If using the full-auth path: install Supabase CLI (`npm install -D supabase`) and if
+  `supabase/config.toml` does not exist, run `npx supabase init`
 - Create files per the chosen template path:
   - `playwright.config.ts` (full or no-auth)
   - `e2e/helpers.ts` (full or no-auth)
@@ -211,7 +214,7 @@ Re-read `.claude/current-plan.md` and `idea/idea.yaml` now. Verify each of these
 - Stage all new files and commit: "Bootstrap MVP scaffold from idea.yaml"
 - Push and open PR using the `.github/PULL_REQUEST_TEMPLATE.md` format:
   - **Summary**: plain-English explanation — "Full MVP scaffold generated from idea.yaml" with key highlights
-  - **How to Test**: "After merging: 1) [If database migrations were created: run the migration SQL — see post-merge instructions below.] Copy .env.example to .env.local and fill in keys, 2) Add the same env vars to Vercel (Project → Settings → Environment Variables), 3) Run `npm run dev` and visit each page locally, 4) Run `make deploy` to deploy to production, 5) Run `/verify` in Claude Code to run E2E tests against the deployed app"
+  - **How to Test**: "After merging: 1) [If database migrations were created: run the migration SQL — see post-merge instructions below.] Copy .env.example to .env.local and fill in keys, 2) Add the same env vars to Vercel (Project → Settings → Environment Variables), 3) Run `npm run dev` and visit each page locally, 4) Run `/verify` in Claude Code to run E2E tests locally, 5) Run `make deploy` to deploy to production"
   - **What Changed**: list every file created and its purpose
   - **Why**: reference the idea.yaml problem/solution
   - **Checklist — Scope**: check all boxes (only built what's in idea.yaml)

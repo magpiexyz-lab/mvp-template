@@ -144,11 +144,8 @@ jobs:
     needs: build
     if: hashFiles('playwright.config.ts') != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
       NEXT_PUBLIC_POSTHOG_KEY: phc_placeholder
       NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
       # Payment stack (stack.payment: stripe)
@@ -161,28 +158,59 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: npm
-      - name: Check for test secrets
-        id: check-secrets
-        run: |
-          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "E2E secrets not configured — skipping"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+      - uses: supabase/setup-cli@v1
+      - name: Start local Supabase
+        run: supabase start -x realtime,storage,imgproxy,inbucket,pgadmin-schema-diff,migra,postgres-meta,studio,edge-runtime,logflare,pgbouncer,vector
+      - name: Apply migrations
+        run: supabase db reset
       - name: Install dependencies
-        if: steps.check-secrets.outputs.skip != 'true'
         run: npm ci
       - name: Install Playwright browsers
-        if: steps.check-secrets.outputs.skip != 'true'
         run: npx playwright install chromium --with-deps
       - name: Run E2E tests
-        if: steps.check-secrets.outputs.skip != 'true'
         run: npx playwright test
       - uses: actions/upload-artifact@v4
-        if: steps.check-secrets.outputs.skip != 'true' && !cancelled()
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+      - name: Stop local Supabase
+        if: ${{ always() }}
+        run: supabase stop
+
+  preview-smoke:
+    needs: build
+    if: github.event_name == 'pull_request' && hashFiles('playwright.config.ts') != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      NEXT_PUBLIC_POSTHOG_KEY: phc_placeholder
+      NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - name: Wait for Vercel preview
+        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
+        id: preview
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          max_timeout: 300
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+      - name: Smoke test preview deployment
+        run: npx playwright test e2e/smoke.spec.ts --global-setup="" --global-teardown=""
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: preview-smoke-report
           path: playwright-report/
           retention-days: 7
 
