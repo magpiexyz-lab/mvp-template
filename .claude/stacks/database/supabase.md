@@ -79,7 +79,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 ## Schema Management
 - SQL migrations go in `supabase/migrations/` as numbered files (`001_initial.sql`, `002_feature.sql`, etc.)
-- Use `CREATE TABLE IF NOT EXISTS` and `CREATE POLICY IF NOT EXISTS` (safe to re-run)
+- Use `CREATE TABLE IF NOT EXISTS` for tables and `DROP POLICY IF EXISTS ... ; CREATE POLICY ...` for RLS policies (safe to re-run — `CREATE POLICY IF NOT EXISTS` is not valid PostgreSQL)
 - Every table must have:
   - `id uuid DEFAULT gen_random_uuid() PRIMARY KEY`
   - `created_at timestamptz DEFAULT now()`
