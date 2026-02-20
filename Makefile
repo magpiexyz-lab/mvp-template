@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help validate distribute test-e2e deploy migrate clean clean-all supabase-start supabase-stop
+.PHONY: help validate distribute verify-local test-e2e deploy migrate clean clean-all supabase-start supabase-stop
 
 help: ## Show this help message
 	@echo "Usage: make <command>"
@@ -118,6 +118,9 @@ supabase-start: ## Start local Supabase for testing (requires Docker)
 
 supabase-stop: ## Stop local Supabase
 	-npx supabase stop
+
+verify-local: ## Verify the app works locally (install, test, cleanup)
+	@bash scripts/verify-local.sh
 
 test-e2e: ## Run Playwright E2E tests
 	@if [ -f playwright.config.ts ]; then \

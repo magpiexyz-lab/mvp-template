@@ -39,16 +39,14 @@ Install these before starting:
 
 ## Quick Start
 
-### 1. Create your repo
+### 1. Create your repo & describe your idea
 
-Click **"Use this template"** on GitHub to create a new repository. Then clone it:
+Click **"Use this template"** on GitHub to create a new repository. Then clone it and fill in your idea:
 
 ```bash
 gh repo clone <your-username>/<your-repo-name>
 cd <your-repo-name>
 ```
-
-### 2. Describe your idea
 
 Edit `idea/idea.yaml` — replace every `TODO` with your actual content. See `idea/idea.example.yaml` for a complete example.
 
@@ -58,7 +56,7 @@ The key fields:
 - **features**: up to ~5 capabilities
 - **primary_metric**: the one number that tells you if this worked
 
-### 3. Validate your idea, commit, and bootstrap
+### 2. Build your app
 
 ```bash
 make validate    # Check for any unfilled TODOs
@@ -71,15 +69,23 @@ Then open Claude Code and run `/bootstrap` to generate the full MVP. Claude will
 3. Generate the full MVP (pages, auth, analytics, API routes)
 4. Open a PR for you to review and merge
 
-### 4. Set environment variables
+### 3. Verify it works
 
-After merging the bootstrap PR:
+After merging the bootstrap PR, run one command:
 
 ```bash
-cp .env.example .env.local
+make verify-local
 ```
 
-Fill in your keys in `.env.local`:
+This automatically installs dependencies, starts local Supabase (if configured), generates `.env.local` with local keys, runs E2E tests, and cleans up. Just needs Docker running.
+
+> **Note:** Docker Desktop is required for projects with `stack.database: supabase`. The script detects your stack from config files and skips services you don't use.
+
+If tests fail, debug interactively with `npx playwright test --ui` or run `/verify` in Claude Code to auto-fix.
+
+### 4. Go live
+
+Set your **production** environment variables:
 - `NEXT_PUBLIC_SUPABASE_URL` — Supabase Dashboard → Settings → API → Project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase Dashboard → Settings → API → `anon` `public` key
 - `NEXT_PUBLIC_POSTHOG_KEY` — PostHog → Project Settings → Project API Key
@@ -88,41 +94,11 @@ Fill in your keys in `.env.local`:
 
 > These env vars are for the default stack. After bootstrap, check `.env.example` for your actual required variables.
 
-Add the same env vars in your Vercel project settings for production.
+Import your repo at [vercel.com/new](https://vercel.com/new) — Vercel auto-deploys on every merge to `main`. Add the env vars above in your Vercel project settings (Project → Settings → Environment Variables).
 
-> **Important (default database stack):** Before running the app, you need to create the database tables. Run `make migrate` to push migrations to your remote Supabase database (one-time setup required — see [Migration Setup](#migration-setup)). After CI secrets are configured, future migrations are applied automatically on merge to `main`.
+> **Important (default database stack):** Run `make migrate` to push migrations to your remote Supabase database before the first deploy (see [Migration Setup](#migration-setup)). After CI secrets are configured, future migrations are applied automatically on merge.
 
-### 5. Run locally
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to verify your app works.
-
-### 6. Verify with E2E tests
-
-If your project uses `stack.testing` with the full-auth path (Supabase + auth), start local Supabase first:
-
-```bash
-make supabase-start
-```
-
-Then open Claude Code and run `/verify`. This runs E2E tests against the local dev server and auto-fixes any failures.
-
-After verification, stop local Supabase:
-
-```bash
-make supabase-stop
-```
-
-> **Note:** `/verify` will auto-start local Supabase if it's not running, and stop it when done. The manual `make supabase-start`/`make supabase-stop` commands are optional convenience shortcuts.
-
-### 7. Deploy to production
-
-**Recommended:** Import your repo at [vercel.com/new](https://vercel.com/new) to connect the Vercel GitHub integration. Once connected, Vercel auto-deploys to production every time you merge a PR to `main` — no manual deploy step needed.
-
-> **Tip:** You can also deploy manually with `make deploy`. The first CLI deploy will prompt you to link the repo to a Vercel project. `make deploy` automatically checks the health endpoint (`/api/health`) after deploy.
+> **Tip:** You can also deploy manually with `make deploy`. The first CLI deploy will prompt you to link the repo to a Vercel project.
 
 ## Commands
 
@@ -131,6 +107,7 @@ Run `make` to see all available utility commands:
 | Command | What it does |
 |---------|-------------|
 | `make validate` | Check idea.yaml for valid YAML, TODOs, name format, and landing page |
+| `make verify-local` | Verify the app works locally (install, test, cleanup) — just needs Docker |
 | `make supabase-start` | Start local Supabase for testing (requires Docker) |
 | `make supabase-stop` | Stop local Supabase |
 | `make test-e2e` | Run Playwright E2E tests |
